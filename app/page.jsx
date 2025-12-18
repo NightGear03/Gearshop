@@ -95,79 +95,75 @@ export default function Page() {
         <img src="/logo.png" height={40} />
       </header>
 
-      <main style={{ padding: 16, display: "flex", gap: 16 }}>
-        <div style={{ flex: 1 }}>
-          <input
-            placeholder="Cari item..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={inputStyle}
-          />
+      <main style={{ padding: 16 }}>
+        <input
+          placeholder="Cari item..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={inputStyle}
+        />
 
-          <select
-            value={category}
-            onChange={e => setCategory(e.target.value)}
-            style={inputStyle}
-          >
-            {categories.map((c, i) => (
-              <option key={i}>{c}</option>
-            ))}
-          </select>
+        <select
+          value={category}
+          onChange={e => setCategory(e.target.value)}
+          style={inputStyle}
+        >
+          {categories.map((c, i) => (
+            <option key={i}>{c}</option>
+          ))}
+        </select>
 
-          {loading ? (
-            <div style={{ textAlign: "center", padding: 20 }}>Loading...</div>
-          ) : (
-            filteredItems.map((item, i) => (
-              <div key={i} style={cardStyle}>
-                <strong>{item.nama}</strong>
-                <div style={{ fontSize: 13, color: "#666" }}>{item.kategori}</div>
+        {loading ? (
+          <div style={{ textAlign: "center", padding: 20 }}>Loading...</div>
+        ) : (
+          filteredItems.map((item, i) => (
+            <div key={i} style={cardStyle}>
+              <strong>{item.nama}</strong>
+              <div style={{ fontSize: 13, color: "#666" }}>{item.kategori}</div>
 
-                <div>Buy: {item.buy}</div>
-                <div>Sell: {item.sell}</div>
-                {item.promo && <div style={promoStyle}>{item.promo}</div>}
-                <div>Status: {statusIcon(item.status)}</div>
+              <div>Buy: {item.buy}</div>
+              <div>Sell: {item.sell}</div>
+              {item.promo && <div style={promoStyle}>{item.promo}</div>}
+              <div>Status: {statusIcon(item.status)}</div>
 
-                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                  <button
-                    onClick={() => addToCart(item, "buy")}
-                    disabled={item.status?.toLowerCase() === "kosong"}
-                    style={{
-                      ...waStyle,
-                      background: item.status?.toLowerCase() === "kosong" ? "#ccc" : "#25D366"
-                    }}
-                  >
-                    {item.status?.toLowerCase() === "kosong" ? "Kosong" : "Beli"}
-                  </button>
-                  <button
-                    onClick={() => addToCart(item, "sell")}
-                    disabled={item.status?.toLowerCase() === "kosong"}
-                    style={{
-                      ...waStyle,
-                      background: item.status?.toLowerCase() === "kosong" ? "#ccc" : "#FF8C00"
-                    }}
-                  >
-                    {item.status?.toLowerCase() === "kosong" ? "Kosong" : "Jual"}
-                  </button>
-                </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <button
+                  onClick={() => addToCart(item, "buy")}
+                  disabled={item.status?.toLowerCase() === "kosong"}
+                  style={{
+                    ...waStyle,
+                    background: item.status?.toLowerCase() === "kosong" ? "#ccc" : "#25D366"
+                  }}
+                >
+                  {item.status?.toLowerCase() === "kosong" ? "Kosong" : "Beli"}
+                </button>
+                <button
+                  onClick={() => addToCart(item, "sell")}
+                  disabled={item.status?.toLowerCase() === "kosong"}
+                  style={{
+                    ...waStyle,
+                    background: item.status?.toLowerCase() === "kosong" ? "#ccc" : "#FF8C00"
+                  }}
+                >
+                  {item.status?.toLowerCase() === "kosong" ? "Kosong" : "Jual"}
+                </button>
               </div>
-            ))
-          )}
-        </div>
+            </div>
+          ))
+        )}
 
-        {/* Cart Sidebar / Overlay */}
+        {/* Cart Modal */}
         <div
           style={{
             position: "fixed",
             top: 0,
-            right: 0,
+            left: 0,
+            width: "100%",
             height: "100%",
-            width: "90%",
-            maxWidth: 350,
             background: "#fff",
-            boxShadow: "-2px 0 8px rgba(0,0,0,0.2)",
-            transform: cartOpen ? "translateX(0)" : "translateX(100%)",
-            transition: "transform 0.3s ease",
             zIndex: 999,
+            transform: cartOpen ? "translateY(0)" : "translateY(100%)",
+            transition: "transform 0.3s ease",
             overflowY: "auto",
             padding: 16
           }}
@@ -196,7 +192,7 @@ export default function Page() {
           {cart.length > 0 && (
             <>
               <div style={{ fontWeight: "bold", marginTop: 8 }}>Total: {totalPrice}</div>
-              <button onClick={sendWA} style={waStyle}>Checkout via WhatsApp</button>
+              <button onClick={sendWA} style={{ waModalStyle }}>Checkout via WhatsApp</button>
             </>
           )}
         </div>
@@ -249,6 +245,19 @@ const waStyle = {
   fontWeight: "bold",
   cursor: "pointer",
   border: "none"
+};
+
+const waModalStyle = {
+  width: "100%",
+  background: "#25D366",
+  color: "#fff",
+  textAlign: "center",
+  padding: 12,
+  borderRadius: 8,
+  border: "none",
+  fontWeight: "bold",
+  cursor: "pointer",
+  marginTop: 10
 };
 
 const removeBtnStyle = {
