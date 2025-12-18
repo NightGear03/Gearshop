@@ -19,9 +19,27 @@ export default async function Page() {
   const items = await getData();
 
   return (
-    <main style={{ padding: 20, fontFamily: "sans-serif" }}>
-      <h1>Gearshop</h1>
-      <p>Katalog item & harga</p>
+    <>
+      {/* HEADER */}
+      <header
+        style={{
+          background: "#3C6EE2",
+          padding: "12px 16px",
+          display: "flex",
+          alignItems: "center"
+        }}
+      >
+        <img
+          src="/logo.png"
+          alt="Gearshop"
+          style={{ height: 40 }}
+        />
+      </header>
+
+      {/* CONTENT */}
+      <main style={{ padding: 16, fontFamily: "sans-serif", background: "#f5f7ff", minHeight: "100vh" }}>style={{ padding: 20, fontFamily: "sans-serif" }}>
+      <h1 style={{ color: "#3C6EE2" }}>Gearshop</h1>
+<p style={{ color: "#555" }}>Katalog item & harga</p>
 
       {items.length === 0 && <p>Belum ada item.</p>}
 
