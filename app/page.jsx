@@ -1,3 +1,4 @@
+"use client";
 import { useState } from "react";
 async function getData() {
   const res = await fetch(
@@ -106,21 +107,5 @@ const filteredItems = items.filter(item =>
     </main>
   );
 }
-export async function getServerSideProps() {
-  const res = await fetch(
-    "https://docs.google.com/spreadsheets/d/1LFLYLmzl-YbYaYoFpEInQKGGzA9nuGzDA_0w9ulArJs/export?format=csv",
-    { cache: "no-store" }
-  );
 
-  const text = await res.text();
-  const rows = text.split("\n").slice(1);
-
-  const items = rows
-    .filter(row => row.trim() !== "")
-    .map(row => {
-      const [kategori, nama, buy, sell, status] = row.split(",");
-      return { kategori, nama, buy, sell, status };
-    });
-
-  return { props: { items } };
-      }
+      
