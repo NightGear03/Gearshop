@@ -59,10 +59,21 @@ export default function Page() {
 
   const statusIcon = status => {
     const s = status?.toLowerCase();
-    if (s === "ready") return "🟢 Ready";
-    if (s === "kosong") return "🔴 Kosong";
+    if (s === "full") return "🟢 Full";
+    if (s === "ready") return "🔵 Ready";
     if (s === "take") return "🟡 Take";
+    if (s === "kosong") return "🔴 Kosong";
     return status;
+  };
+
+  const isBuyEnabled = status => {
+    const s = status?.toLowerCase();
+    return s === "full" || s === "ready";
+  };
+
+  const isSellEnabled = status => {
+    const s = status?.toLowerCase();
+    return s === "ready" || s === "take";
   };
 
   const addToCart = (item, mode="buy") => {
@@ -102,9 +113,6 @@ export default function Page() {
     const msg = `Halo,%20saya%20mau%20order:%0A${text}%0ATotal: ${totalPrice}`;
     window.open(`https://wa.me/6283101456267?text=${msg}`,"_blank");
   }
-
-  const isBuyEnabled = status => status?.toLowerCase() === "ready";
-  const isSellEnabled = status => status?.toLowerCase() === "take";
 
   return(
     <>
