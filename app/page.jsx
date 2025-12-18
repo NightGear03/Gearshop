@@ -30,7 +30,7 @@ export default function Page() {
             buy: parseInt(c[2]) || 0,
             sell: parseInt(c[3]) || 0,
             status: c[4]?.trim(),
-            promo: c[5]?.trim() || null // optional kolom promo
+            promo: c[5]?.trim() || null
           };
         });
 
@@ -66,7 +66,6 @@ export default function Page() {
     } else {
       setCart([...cart, { ...item, qty: 1, mode, key }]);
     }
-    // Open cart drawer automatically
     setCartOpen(true);
   };
 
@@ -155,46 +154,68 @@ export default function Page() {
           )}
         </div>
 
-        {/* Cart Sidebar */}
-        <div style={{ width: 300, position: "relative" }}>
-          <div style={{
+        {/* Cart Sidebar / Overlay */}
+        <div
+          style={{
             position: "fixed",
-            right: cartOpen ? 0 : -320,
             top: 0,
+            right: 0,
             height: "100%",
-            width: 300,
+            width: "90%",
+            maxWidth: 350,
             background: "#fff",
-            borderLeft: "1px solid #ddd",
-            padding: 16,
-            boxShadow: "-2px 0 8px rgba(0,0,0,0.1)",
-            transition: "right 0.3s ease",
+            boxShadow: "-2px 0 8px rgba(0,0,0,0.2)",
+            transform: cartOpen ? "translateX(0)" : "translateX(100%)",
+            transition: "transform 0.3s ease",
+            zIndex: 999,
             overflowY: "auto",
-            zIndex: 999
-          }}>
-            <h3>Keranjang</h3>
-            <button onClick={() => setCartOpen(false)} style={{ float: "right", cursor: "pointer" }}>✖</button>
-            {cart.length === 0 && <div>Keranjang kosong</div>}
-            {cart.map((c, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
-                <span style={{ flex: 1 }}>{c.nama} ({c.mode})</span>
-                <input
-                  type="number"
-                  value={c.qty}
-                  onChange={e => updateQty(c, parseInt(e.target.value))}
-                  style={{ width: 50, marginRight: 10 }}
-                />
-                <span style={{ marginRight: 10 }}>{c.mode === "buy" ? c.buy * c.qty : c.sell * c.qty}</span>
-                <button onClick={() => removeFromCart(c)} style={removeBtnStyle}>Hapus</button>
-              </div>
-            ))}
-            {cart.length > 0 && (
-              <>
-                <div style={{ fontWeight: "bold", marginTop: 8 }}>Total: {totalPrice}</div>
-                <button onClick={sendWA} style={waStyle}>Checkout via WhatsApp</button>
-              </>
-            )}
-          </div>
+            padding: 16
+          }}
+        >
+          <button
+            onClick={() => setCartOpen(false)}
+            style={{ float: "right", cursor: "pointer", marginBottom: 10 }}
+          >
+            ✖
+          </button>
+          <h3>Keranjang</h3>
+          {cart.length === 0 && <div>Keranjang kosong</div>}
+          {cart.map((c, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
+              <span style={{ flex: 1 }}>{c.nama} ({c.mode})</span>
+              <input
+                type="number"
+                value={c.qty}
+                onChange={e => updateQty(c, parseInt(e.target.value))}
+                style={{ width: 50, marginRight: 10 }}
+              />
+              <span style={{ marginRight: 10 }}>{c.mode === "buy" ? c.buy * c.qty : c.sell * c.qty}</span>
+              <button onClick={() => removeFromCart(c)} style={removeBtnStyle}>Hapus</button>
+            </div>
+          ))}
+          {cart.length > 0 && (
+            <>
+              <div style={{ fontWeight: "bold", marginTop: 8 }}>Total: {totalPrice}</div>
+              <button onClick={sendWA} style={waStyle}>Checkout via WhatsApp</button>
+            </>
+          )}
         </div>
+
+        {/* Backdrop */}
+        {cartOpen && (
+          <div
+            onClick={() => setCartOpen(false)}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              background: "rgba(0,0,0,0.3)",
+              zIndex: 998
+            }}
+          ></div>
+        )}
       </main>
     </>
   );
@@ -237,13 +258,6 @@ const removeBtnStyle = {
   borderRadius: 6,
   padding: "4px 8px",
   cursor: "pointer"
-};
-
-const cartStyle = {
-  marginTop: 20,
-  padding: 14,
-  border: "1px solid #ddd",
-  borderRadius: 10
 };
 
 const promoStyle = {
