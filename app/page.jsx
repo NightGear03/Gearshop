@@ -30,7 +30,17 @@ export default async function Page() {
           <li key={i} style={{ marginBottom: 12 }}>
             <b>{item.nama}</b> ({item.kategori})<br />
             Buy: {item.buy} | Sell: {item.sell}<br />
-            Status: {item.status}
+            <span>
+  {item.status?.toLowerCase().includes("ready") ? (
+    <span style={{ color: "green", fontWeight: "bold" }}>
+      🟢 Ready
+    </span>
+  ) : (
+    <span style={{ color: "red", fontWeight: "bold" }}>
+      🔴 Kosong
+    </span>
+  )}
+</span>
           </li>
         ))}
       </ul>
