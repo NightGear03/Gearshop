@@ -75,7 +75,6 @@ export default function Page() {
       setCart([...cart,{...item,qty:1,mode,key}]);
     }
     setCartOpen(true);
-    // TODO: Add flying animation
   }
 
   const removeFromCart = (item) => {
@@ -103,6 +102,9 @@ export default function Page() {
     const msg = `Halo,%20saya%20mau%20order:%0A${text}%0ATotal: ${totalPrice}`;
     window.open(`https://wa.me/6283101456267?text=${msg}`,"_blank");
   }
+
+  const isBuyEnabled = status => status?.toLowerCase() === "ready";
+  const isSellEnabled = status => status?.toLowerCase() === "take";
 
   return(
     <>
@@ -143,8 +145,24 @@ export default function Page() {
               {item.promo && <div style={promoStyle}>{item.promo}</div>}
               <div>Status: {statusIcon(item.status)}</div>
               <div style={{display:"flex",gap:8,marginTop:8}}>
-                <button onClick={()=>addToCart(item,"buy")} disabled={item.status?.toLowerCase()==="kosong"} style={{...waStyle,background:"#25D366"}}>Beli</button>
-                <button onClick={()=>addToCart(item,"sell")} disabled={item.status?.toLowerCase()==="kosong"} style={{...waStyle,background:"#FF8C00"}}>Jual</button>
+                <button 
+                  onClick={()=>addToCart(item,"buy")} 
+                  disabled={!isBuyEnabled(item.status)} 
+                  style={{
+                    ...waStyle, 
+                    background: isBuyEnabled(item.status)?"#25D366":"#ccc"
+                  }}>
+                  Beli
+                </button>
+                <button 
+                  onClick={()=>addToCart(item,"sell")} 
+                  disabled={!isSellEnabled(item.status)} 
+                  style={{
+                    ...waStyle, 
+                    background: isSellEnabled(item.status)?"#FF8C00":"#ccc"
+                  }}>
+                  Jual
+                </button>
               </div>
             </div>
           ))
