@@ -1,6 +1,8 @@
 export const metadata = {
   title: "Gearshop",
-  description: "Katalog item & harga"
+  description: "Katalog item & harga",
+  manifest: "/manifest.json",
+  themeColor: "#22c55e"
 };
 
 export default function RootLayout({ children }) {
