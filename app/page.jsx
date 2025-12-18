@@ -91,7 +91,7 @@ export default function Page() {
             <div>Status: {statusIcon(item.status)}</div>
 
             <a
-              href={`https://wa.me/62XXXXXXXXXX?text=Halo,%20saya%20mau%20order%20${item.nama}`}
+              href={`https://wa.me/6283101456267?text=Halo,%20saya%20mau%20order%20${item.nama}`}
               target="_blank"
               style={waStyle}
             >
