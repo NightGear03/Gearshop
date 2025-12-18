@@ -152,20 +152,24 @@ export default function Page() {
           ))
         )}
 
-        {/* Cart Modal */}
+        {/* Cart Side Panel */}
         <div
           style={{
             position: "fixed",
             top: 0,
-            left: 0,
-            width: "100%",
+            right: 0,
             height: "100%",
+            width: "40%", // desktop ~40% layar
+            minWidth: 280,
+            maxWidth: 350,
             background: "#fff",
-            zIndex: 999,
-            transform: cartOpen ? "translateY(0)" : "translateY(100%)",
+            boxShadow: "-2px 0 8px rgba(0,0,0,0.2)",
+            transform: cartOpen ? "translateX(0)" : "translateX(100%)",
             transition: "transform 0.3s ease",
+            zIndex: 999,
             overflowY: "auto",
-            padding: 16
+            padding: 16,
+            borderRadius: "8px 0 0 8px"
           }}
         >
           <button
@@ -192,7 +196,7 @@ export default function Page() {
           {cart.length > 0 && (
             <>
               <div style={{ fontWeight: "bold", marginTop: 8 }}>Total: {totalPrice}</div>
-              <button onClick={sendWA} style={{ waModalStyle }}>Checkout via WhatsApp</button>
+              <button onClick={sendWA} style={waModalStyle}>Checkout via WhatsApp</button>
             </>
           )}
         </div>
