@@ -25,25 +25,44 @@ export default async function Page() {
 
       {items.length === 0 && <p>Belum ada item.</p>}
 
-      <ul>
-        {items.map((item, i) => (
-          <li key={i} style={{ marginBottom: 12 }}>
-            <b>{item.nama}</b> ({item.kategori})<br />
-            Buy: {item.buy} | Sell: {item.sell}<br />
-            <span>
-  {item.status?.toLowerCase().includes("ready") ? (
-    <span style={{ color: "green", fontWeight: "bold" }}>
-      🟢 Ready
-    </span>
-  ) : (
-    <span style={{ color: "red", fontWeight: "bold" }}>
-      🔴 Kosong
-    </span>
-  )}
-</span>
-          </li>
-        ))}
-      </ul>
+      <div style={{ display: "grid", gap: 12 }}>
+  {items.map((item, i) => (
+    <div
+      key={i}
+      style={{
+        border: "1px solid #ddd",
+        borderRadius: 10,
+        padding: 12,
+        background: "#fff",
+        boxShadow: "0 2px 6px rgba(0,0,0,0.05)"
+      }}
+    >
+      <div style={{ fontSize: 16, fontWeight: "bold" }}>
+        {item.nama}
+      </div>
+
+      <div style={{ fontSize: 13, color: "#666" }}>
+        {item.kategori}
+      </div>
+
+      <div style={{ marginTop: 6 }}>
+        Buy: <b>{item.buy}</b> | Sell: <b>{item.sell}</b>
+      </div>
+
+      <div style={{ marginTop: 6 }}>
+        {item.status?.toLowerCase().includes("ready") ? (
+          <span style={{ color: "green", fontWeight: "bold" }}>
+            🟢 Ready
+          </span>
+        ) : (
+          <span style={{ color: "red", fontWeight: "bold" }}>
+            🔴 Kosong
+          </span>
+        )}
+      </div>
+    </div>
+  ))}
+</div>
 
       <a href="https://wa.me/6283101456267">
         Chat GEAR SHOP
