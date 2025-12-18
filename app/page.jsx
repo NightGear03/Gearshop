@@ -6,9 +6,14 @@ export default function Page() {
   const [items, setItems] = useState([]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
+  const [loading, setLoading] = useState(true);
+
+  // Keranjang
+  const [cart, setCart] = useState([]);
 
   useEffect(() => {
     async function loadData() {
+      setLoading(true);
       const res = await fetch(
         "https://docs.google.com/spreadsheets/d/1LFLYLmzl-YbYaYoFpEInQKGGzA9nuGzDA_0w9ulArJs/export?format=csv"
       );
@@ -22,13 +27,14 @@ export default function Page() {
           return {
             kategori: c[0]?.trim(),
             nama: c[1]?.trim(),
-            buy: c[2]?.trim(),
-            sell: c[3]?.trim(),
+            buy: parseInt(c[2]) || 0,
+            sell: parseInt(c[3]) || 0,
             status: c[4]?.trim()
           };
         });
 
       setItems(parsed);
+      setLoading(false);
     }
 
     loadData();
@@ -37,13 +43,8 @@ export default function Page() {
   const categories = ["All", ...new Set(items.map(i => i.kategori))];
 
   const filteredItems = items.filter(item => {
-    const nameMatch = item.nama
-      ?.toLowerCase()
-      .includes(search.toLowerCase());
-
-    const catMatch =
-      category === "All" || item.kategori === category;
-
+    const nameMatch = item.nama?.toLowerCase().includes(search.toLowerCase());
+    const catMatch = category === "All" || item.kategori === category;
     return nameMatch && catMatch;
   });
 
@@ -53,6 +54,42 @@ export default function Page() {
     if (s === "kosong") return "🔴 Kosong";
     if (s === "take") return "🟡 Take";
     return status;
+  };
+
+  const addToCart = item => {
+    if (item.status?.toLowerCase() === "kosong") return;
+    const existing = cart.find(c => c.nama === item.nama);
+    if (existing) {
+      setCart(
+        cart.map(c =>
+          c.nama === item.nama ? { ...c, qty: c.qty + 1 } : c
+        )
+      );
+    } else {
+      setCart([...cart, { ...item, qty: 1 }]);
+    }
+  };
+
+  const removeFromCart = item => {
+    setCart(cart.filter(c => c.nama !== item.nama));
+  };
+
+  const updateQty = (item, qty) => {
+    if (qty < 1) return;
+    setCart(
+      cart.map(c => (c.nama === item.nama ? { ...c, qty } : c))
+    );
+  };
+
+  const totalPrice = cart.reduce((sum, c) => sum + c.buy * c.qty, 0);
+
+  const sendWA = () => {
+    if (!cart.length) return;
+    const text = cart
+      .map(c => `${c.nama} x${c.qty} = ${c.buy * c.qty}`)
+      .join("%0A");
+    const msg = `Halo,%20saya%20mau%20order:%0A${text}%0ATotal: ${totalPrice}`;
+    window.open(`https://wa.me/6283101456267?text=${msg}`, "_blank");
   };
 
   return (
@@ -79,26 +116,53 @@ export default function Page() {
           ))}
         </select>
 
-        {filteredItems.map((item, i) => (
-          <div key={i} style={cardStyle}>
-            <strong>{item.nama}</strong>
-            <div style={{ fontSize: 13, color: "#666" }}>
-              {item.kategori}
+        {loading ? (
+          <div style={{ textAlign: "center", padding: 20 }}>Loading...</div>
+        ) : (
+          filteredItems.map((item, i) => (
+            <div key={i} style={cardStyle}>
+              <strong>{item.nama}</strong>
+              <div style={{ fontSize: 13, color: "#666" }}>{item.kategori}</div>
+
+              <div>Buy: {item.buy}</div>
+              <div>Sell: {item.sell}</div>
+              <div>Status: {statusIcon(item.status)}</div>
+
+              <button
+                onClick={() => addToCart(item)}
+                disabled={item.status?.toLowerCase() === "kosong"}
+                style={{
+                  ...waStyle,
+                  background:
+                    item.status?.toLowerCase() === "kosong" ? "#ccc" : "#25D366"
+                }}
+              >
+                {item.status?.toLowerCase() === "kosong" ? "Kosong" : "Tambah ke Keranjang"}
+              </button>
             </div>
+          ))
+        )}
 
-            <div>Buy: {item.buy}</div>
-            <div>Sell: {item.sell}</div>
-            <div>Status: {statusIcon(item.status)}</div>
-
-            <a
-              href={`https://wa.me/6283101456267?text=Halo,%20saya%20mau%20order%20${item.nama}`}
-              target="_blank"
-              style={waStyle}
-            >
-              Order via WhatsApp
-            </a>
+        {cart.length > 0 && (
+          <div style={cartStyle}>
+            <h3>Keranjang</h3>
+            {cart.map((c, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
+                <span style={{ flex: 1 }}>{c.nama}</span>
+                <input
+                  type="number"
+                  value={c.qty}
+                  onChange={e => updateQty(c, parseInt(e.target.value))}
+                  style={{ width: 50, marginRight: 10 }}
+                />
+                <span style={{ marginRight: 10 }}>{c.buy * c.qty}</span>
+                <button onClick={() => removeFromCart(c)} style={removeBtnStyle}>Hapus</button>
+              </div>
+            ))}
+            <div style={{ fontWeight: "bold", marginTop: 8 }}>Total: {totalPrice}</div>
+            <button onClick={sendWA} style={waStyle}>Checkout via WhatsApp</button>
           </div>
-        ))}
+        )}
       </main>
     </>
   );
@@ -116,7 +180,12 @@ const cardStyle = {
   padding: 14,
   border: "1px solid #ddd",
   borderRadius: 10,
-  marginBottom: 10
+  marginBottom: 10,
+  transition: "transform 0.2s",
+  cursor: "pointer",
+  hover: {
+    transform: "scale(1.02)"
+  }
 };
 
 const waStyle = {
@@ -128,5 +197,22 @@ const waStyle = {
   padding: 10,
   borderRadius: 8,
   textDecoration: "none",
-  fontWeight: "bold"
+  fontWeight: "bold",
+  cursor: "pointer"
+};
+
+const removeBtnStyle = {
+  background: "#E74C3C",
+  color: "#fff",
+  border: "none",
+  borderRadius: 6,
+  padding: "4px 8px",
+  cursor: "pointer"
+};
+
+const cartStyle = {
+  marginTop: 20,
+  padding: 14,
+  border: "1px solid #ddd",
+  borderRadius: 10
 };
