@@ -1,28 +1,36 @@
 "use client";
-import { useState } from "react";
-async function getData() {
-  const res = await fetch(
-    "https://docs.google.com/spreadsheets/d/1LFLYLmzl-YbYaYoFpEInQKGGzA9nuGzDA_0w9ulArJs/export?format=csv",
-    { cache: "no-store" }
+
+import { useEffect, useState } from "react";
+
+export default function Page() {
+  const [items, setItems] = useState([]);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    async function loadData() {
+      const res = await fetch(
+        "https://docs.google.com/spreadsheets/d/1LFLYLmzl-YbYaYoFpEInQKGGzA9nuGzDA_0w9ulArJs/export?format=csv"
+      );
+      const text = await res.text();
+      const rows = text.split("\n").slice(1);
+
+      const parsed = rows
+        .filter(r => r.trim() !== "")
+        .map(r => {
+          const [kategori, nama, buy, sell, status] = r.split(",");
+          return { kategori, nama, buy, sell, status };
+        });
+
+      setItems(parsed);
+    }
+
+    loadData();
+  }, []);
+
+  const filteredItems = items.filter(item =>
+    item.nama?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const text = await res.text();
-  const rows = text.split("\n").slice(1);
-
-  return rows
-    .filter(row => row.trim() !== "")
-    .map(row => {
-      const [kategori, nama, buy, sell, status] = row.split(",");
-      return { kategori, nama, buy, sell, status };
-    });
-}
-
-export default function Page({ items }) {
-  const [search, setSearch] = useState("");
-  
-const filteredItems = items.filter(item =>
-  item.nama.toLowerCase().includes(search.toLowerCase())
-);
   return (
     <>
       {/* HEADER */}
@@ -30,82 +38,45 @@ const filteredItems = items.filter(item =>
         style={{
           background: "#3C6EE2",
           padding: "12px 16px",
-          display: "flex",
-          alignItems: "center"
+          color: "#fff"
         }}
       >
-        <img
-          src="/logo.png"
-          alt="Gearshop"
-          style={{ height: 40 }}
-        />
+        <img src="/logo.png" alt="Gearshop" style={{ height: 40 }} />
       </header>
-      <input
-  type="text"
-  placeholder="Cari item..."
-  value={search}
-  onChange={(e) => setSearch(e.target.value)}
-  style={{
-    width: "100%",
-    padding: 10,
-    borderRadius: 8,
-    border: "1px solid #ccc",
-    marginBottom: 16
-  }}
-/>
 
       {/* CONTENT */}
-      <main style={{ padding: 16, fontFamily: "sans-serif", background: "#f5f7ff", minHeight: "100vh" }}>style={{ padding: 20, fontFamily: "sans-serif" }}>
-      <h1 style={{ color: "#3C6EE2" }}>Gearshop</h1>
-<p style={{ color: "#555" }}>Katalog item & harga</p>
+      <main style={{ padding: 16 }}>
+        <input
+          type="text"
+          placeholder="Cari item..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{
+            width: "100%",
+            padding: 10,
+            borderRadius: 8,
+            border: "1px solid #ccc",
+            marginBottom: 16
+          }}
+        />
 
-      {items.length === 0 && <p>Belum ada item.</p>}
-
-      <div style={{ display: "grid", gap: 12 }}>
-  {filteredItems.map((item, i) => (
-    <div
-      key={i}
-      style={{
-        border: "1px solid #ddd",
-        borderRadius: 10,
-        padding: 12,
-        background: "#fff",
-        boxShadow: "0 2px 6px rgba(0,0,0,0.05)"
-      }}
-    >
-      <div style={{ fontSize: 16, fontWeight: "bold" }}>
-        {item.nama}
-      </div>
-
-      <div style={{ fontSize: 13, color: "#666" }}>
-        {item.kategori}
-      </div>
-
-      <div style={{ marginTop: 6 }}>
-        Buy: <b>{item.buy}</b> | Sell: <b>{item.sell}</b>
-      </div>
-
-      <div style={{ marginTop: 6 }}>
-        {item.status?.toLowerCase().includes("ready") ? (
-          <span style={{ color: "green", fontWeight: "bold" }}>
-            🟢 Ready
-          </span>
-        ) : (
-          <span style={{ color: "red", fontWeight: "bold" }}>
-            🔴 Kosong
-          </span>
-        )}
-      </div>
-    </div>
-  ))}
-</div>
-      
-
-      <a href="https://wa.me/6283101456267">
-        Chat GEAR SHOP
-      </a>
-    </main>
+        {filteredItems.map((item, i) => (
+          <div
+            key={i}
+            style={{
+              padding: 12,
+              marginBottom: 8,
+              border: "1px solid #ddd",
+              borderRadius: 8
+            }}
+          >
+            <strong>{item.nama}</strong>
+            <div>Buy: {item.buy}</div>
+            <div>Sell: {item.sell}</div>
+            <div>Status: {item.status}</div>
+          </div>
+        ))}
+      </main>
+    </>
   );
 }
-
-      
