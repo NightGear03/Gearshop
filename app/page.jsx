@@ -13,7 +13,7 @@ export default function Page() {
   const [cartOpen, setCartOpen] = useState(false);
   const [wishlist, setWishlist] = useState([]);
 
-  /* ===== LOAD DATA ===== */
+  /* ================= LOAD DATA ================= */
   useEffect(() => {
     async function loadData() {
       setLoading(true);
@@ -44,54 +44,70 @@ export default function Page() {
     loadData();
   }, []);
 
-  /* ===== FILTER ===== */
+  /* ================= FILTER ================= */
   const categories = ["All", ...new Set(items.map(i => i.kategori))];
 
   const filteredItems = items
     .filter(i =>
-      i.nama?.toLowerCase().includes(search.toLowerCase()) &&
+      i.nama.toLowerCase().includes(search.toLowerCase()) &&
       (category === "All" || i.kategori === category)
     )
-    .sort((a,b) => {
-      if(sort === "buy-asc") return a.buy - b.buy;
-      if(sort === "buy-desc") return b.buy - a.buy;
-      if(sort === "sell-asc") return a.sell - b.sell;
-      if(sort === "sell-desc") return b.sell - a.sell;
+    .sort((a,b)=>{
+      if(sort==="buy-asc") return a.buy-b.buy;
+      if(sort==="buy-desc") return b.buy-a.buy;
+      if(sort==="sell-asc") return a.sell-b.sell;
+      if(sort==="sell-desc") return b.sell-a.sell;
       return 0;
     });
 
-  /* ===== LOGIC ===== */
-  const isBuyEnabled = s => ["full","ready"].includes(s?.toLowerCase());
-  const isSellEnabled = s => ["ready","take"].includes(s?.toLowerCase());
+  /* ================= STATUS ================= */
+  const statusColor = s => {
+    const v = s?.toLowerCase();
+    if(v==="ready") return "#22c55e";
+    if(v==="take") return "#facc15";
+    if(v==="full") return "#3b82f6";
+    if(v==="kosong") return "#9ca3af";
+    return "#6b7280";
+  };
 
+  const canBuy = s => ["ready","full"].includes(s?.toLowerCase());
+  const canSell = s => ["ready","take"].includes(s?.toLowerCase());
+
+  /* ================= CART ================= */
   const addToCart = (item, mode) => {
+    if(item.status?.toLowerCase()==="kosong") return;
     const key = `${item.nama}-${mode}`;
-    const exist = cart.find(c => c.key === key);
-    if (exist) {
-      setCart(cart.map(c => c.key === key ? {...c, qty:c.qty+1} : c));
+    const exist = cart.find(c=>c.key===key);
+    if(exist){
+      setCart(cart.map(c=>c.key===key?{...c,qty:c.qty+1}:c));
     } else {
-      setCart([...cart, {...item, qty:1, mode, key}]);
+      setCart([...cart,{...item,qty:1,mode,key}]);
     }
     setCartOpen(true);
   };
 
-  const toggleWishlist = item => {
-    setWishlist(
-      wishlist.includes(item.nama)
-        ? wishlist.filter(i => i !== item.nama)
-        : [...wishlist, item.nama]
+  const total = cart.reduce(
+    (s,c)=>s + (c.mode==="buy"?c.buy:c.sell)*c.qty,0
+  );
+
+  const sendWA = () => {
+    const text = cart.map(c=>
+      `${c.nama} (${c.mode}) x${c.qty}`
+    ).join("%0A");
+    window.open(
+      `https://wa.me/6283101456267?text=Halo%20saya%20order:%0A${text}%0ATotal:%20${total}`,
+      "_blank"
     );
   };
 
-  /* ===== UI ===== */
+  /* ================= UI ================= */
   return (
     <>
       {/* HEADER */}
       <header style={header}>
-        <img src="/logo.png" height={36} />
-        <div style={{position:"relative"}} onClick={()=>setCartOpen(true)}>
-          🛒
-          {cart.length > 0 && <span style={cartBadge}>{cart.length}</span>}
+        <img src="/logo.png" height={36}/>
+        <div onClick={()=>setCartOpen(true)} style={{cursor:"pointer"}}>
+          🛒 {cart.length>0 && <span style={badge}>{cart.length}</span>}
         </div>
       </header>
 
@@ -104,10 +120,10 @@ export default function Page() {
         />
 
         <div style={{display:"flex",gap:8}}>
-          <select value={category} onChange={e=>setCategory(e.target.value)} style={{...input,flex:1}}>
+          <select value={category} onChange={e=>setCategory(e.target.value)} style={input}>
             {categories.map(c=><option key={c}>{c}</option>)}
           </select>
-          <select value={sort} onChange={e=>setSort(e.target.value)} style={{...input,width:120}}>
+          <select value={sort} onChange={e=>setSort(e.target.value)} style={input}>
             <option value="default">Sort</option>
             <option value="buy-asc">Buy ↑</option>
             <option value="buy-desc">Buy ↓</option>
@@ -116,70 +132,78 @@ export default function Page() {
           </select>
         </div>
 
-        {loading ? (
-          <div style={{textAlign:"center",padding:20}}>Loading...</div>
-        ) : (
-          filteredItems.map(item => (
+        {loading ? <div style={{padding:20,textAlign:"center"}}>Loading...</div> :
+          filteredItems.map(item=>(
             <div key={item.nama} style={card}>
-              <div style={{display:"flex",gap:12}}>
-                <div style={thumb}>
-                  {item.image && (
-                    <img
-                      src={item.image}
-                      style={thumbImg}
-                      onError={e=>e.currentTarget.style.display="none"}
-                    />
-                  )}
-                  <span style={heart} onClick={()=>toggleWishlist(item)}>
-                    {wishlist.includes(item.nama)?"❤️":"🤍"}
-                  </span>
+              <div style={imgWrap}>
+                <img
+                  src={item.image || "/no-image.png"}
+                  onError={e=>e.currentTarget.src="/no-image.png"}
+                  style={img}
+                />
+              </div>
+
+              <div style={{padding:12}}>
+                <div style={{display:"flex",justifyContent:"space-between"}}>
+                  <strong>{item.nama}</strong>
+                  <span style={{
+                    background:statusColor(item.status),
+                    color:"#fff",
+                    padding:"2px 8px",
+                    borderRadius:999,
+                    fontSize:11
+                  }}>{item.status}</span>
                 </div>
 
-                <div style={{flex:1}}>
-                  <strong>{item.nama}</strong>
-                  <div style={{fontSize:13,color:"#666"}}>{item.kategori}</div>
+                <div style={{fontSize:13,color:"#666"}}>{item.kategori}</div>
 
-                  <div style={{display:"flex",justifyContent:"space-between",marginTop:6}}>
-                    <span>Buy: {item.buy}</span>
-                    <span>Sell: {item.sell}</span>
-                  </div>
+                <div style={{display:"flex",justifyContent:"space-between",marginTop:6}}>
+                  <span>Buy: {item.buy}</span>
+                  <span>Sell: {item.sell}</span>
+                </div>
 
-                  {item.promo && <div style={promo}>{item.promo}</div>}
+                {item.promo && <div style={promo}>{item.promo}</div>}
 
-                  <div style={{display:"flex",gap:8,marginTop:10}}>
-                    <button
-                      disabled={!isBuyEnabled(item.status)}
-                      onClick={()=>addToCart(item,"buy")}
-                      style={{...btnGreen,opacity:isBuyEnabled(item.status)?1:.5}}
-                    >
-                      Beli
-                    </button>
-                    <button
-                      disabled={!isSellEnabled(item.status)}
-                      onClick={()=>addToCart(item,"sell")}
-                      style={{...btnOrange,opacity:isSellEnabled(item.status)?1:.5}}
-                    >
-                      Jual
-                    </button>
-                  </div>
+                <div style={{display:"flex",gap:8,marginTop:10}}>
+                  <button disabled={!canBuy(item.status)} onClick={()=>addToCart(item,"buy")} style={btnBuy}>Beli</button>
+                  <button disabled={!canSell(item.status)} onClick={()=>addToCart(item,"sell")} style={btnSell}>Jual</button>
                 </div>
               </div>
             </div>
           ))
-        )}
+        }
       </main>
+
+      {/* CART */}
+      {cartOpen && (
+        <>
+          <div onClick={()=>setCartOpen(false)} style={backdrop}/>
+          <div style={cartBox}>
+            <strong>Keranjang</strong>
+            {cart.map(c=>(
+              <div key={c.key} style={{display:"flex",justifyContent:"space-between",marginTop:8}}>
+                <span>{c.nama} ({c.mode}) x{c.qty}</span>
+                <span>{(c.mode==="buy"?c.buy:c.sell)*c.qty}</span>
+              </div>
+            ))}
+            <button onClick={sendWA} style={checkout}>Checkout WA</button>
+          </div>
+        </>
+      )}
     </>
   );
 }
 
-/* ===== STYLE ===== */
-const header={background:"#3C6EE2",padding:12,display:"flex",justifyContent:"space-between",alignItems:"center"};
-const cartBadge={position:"absolute",top:-6,right:-8,fontSize:11,background:"red",color:"#fff",borderRadius:"50%",padding:"2px 6px"};
-const input={width:"100%",padding:10,borderRadius:8,border:"1px solid #ccc",marginBottom:12};
-const card={background:"#fff",borderRadius:14,padding:12,marginBottom:12,border:"1px solid #ddd"};
-const thumb={width:72,height:72,borderRadius:10,background:"#e5e7eb",position:"relative",overflow:"hidden"};
-const thumbImg={width:"100%",height:"100%",objectFit:"cover"};
-const heart={position:"absolute",top:4,right:6,fontSize:16};
-const promo={background:"#FFD700",padding:"2px 6px",borderRadius:4,fontSize:12,marginTop:6,display:"inline-block"};
-const btnGreen={flex:1,padding:10,borderRadius:8,border:"none",background:"#25D366",color:"#fff"};
-const btnOrange={flex:1,padding:10,borderRadius:8,border:"none",background:"#FF8C00",color:"#fff"};
+/* ================= STYLE ================= */
+const header={background:"#3C6EE2",padding:12,display:"flex",justifyContent:"space-between",color:"#fff"};
+const badge={background:"red",borderRadius:"50%",padding:"2px 6px",fontSize:12};
+const input={flex:1,padding:10,borderRadius:8,border:"1px solid #ccc"};
+const card={border:"1px solid #ddd",borderRadius:14,overflow:"hidden",marginTop:12};
+const imgWrap={width:"100%",aspectRatio:"16/9",background:"#eee"};
+const img={width:"100%",height:"100%",objectFit:"cover"};
+const promo={background:"#FFD700",display:"inline-block",padding:"2px 6px",borderRadius:4,fontSize:12};
+const btnBuy={flex:1,background:"#22c55e",color:"#fff",border:"none",padding:10,borderRadius:8};
+const btnSell={flex:1,background:"#f97316",color:"#fff",border:"none",padding:10,borderRadius:8};
+const backdrop={position:"fixed",inset:0,background:"rgba(0,0,0,.4)"};
+const cartBox={position:"fixed",bottom:0,left:0,right:0,background:"#fff",padding:16,borderTopLeftRadius:16,borderTopRightRadius:16};
+const checkout={marginTop:12,width:"100%",padding:12,background:"#25D366",color:"#fff",border:"none",borderRadius:10};
