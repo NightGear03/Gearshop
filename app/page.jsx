@@ -16,9 +16,9 @@ export default function Page() {
   const [wishlist, setWishlist] = useState([]);
   const [ign, setIgn] = useState("");
 
-  /* ===== STATE DARK MODE (BARU) ===== */
-  // Default true biar langsung mode gaming (gelap), bisa diganti false kalau mau terang duluan
+  /* ===== STATE DARK MODE & STORE STATUS ===== */
   const [darkMode, setDarkMode] = useState(true);
+  const [isStoreOpen, setIsStoreOpen] = useState(true); // Default Buka sebelum data ke-load
 
   /* ===== LOAD DATA ===== */
   useEffect(() => {
@@ -44,13 +44,29 @@ export default function Page() {
               promo: c[5]?.trim() || null
             };
           });
-        setItems(parsed);
+
+        /* --- LOGIC CEK STATUS TOKO --- */
+        // Cari baris yang kategorinya #SYSTEM dan Namanya STATUS_TOKO
+        const systemRow = parsed.find(
+          item => item.kategori?.toUpperCase() === "#SYSTEM" && item.nama?.toUpperCase() === "STATUS_TOKO"
+        );
+        
+        // Kalau ketemu barisnya, cek statusnya TUTUP atau BUKA. Kalau gak ketemu, anggap BUKA.
+        if (systemRow && systemRow.status?.toUpperCase() === "TUTUP") {
+          setIsStoreOpen(false);
+        } else {
+          setIsStoreOpen(true);
+        }
+
+        // Filter biar baris #SYSTEM gak muncul di list barang jualan
+        const realItems = parsed.filter(item => item.kategori?.toUpperCase() !== "#SYSTEM");
+        
+        setItems(realItems);
 
         // Load IGN & Dark Mode Setting
         const savedIgn = localStorage.getItem("gearShopIGN");
         if (savedIgn) setIgn(savedIgn);
         
-        // Cek simpanan tema user
         const savedTheme = localStorage.getItem("gearShopTheme");
         if (savedTheme) setDarkMode(savedTheme === "dark");
 
@@ -139,6 +155,10 @@ export default function Page() {
     window.open(`https://wa.me/6283101456267?text=${message}`, "_blank");
   };
 
+  const contactAdmin = () => {
+    window.open("https://wa.me/6283101456267?text=Halo%20Admin,%20mau%20tanya-tanya%20dong.", "_blank");
+  }
+
   /* Helper Format Gold */
   const formatGold = (val) => (
     <span style={{ fontWeight: "bold", color: "#B8860B" }}>
@@ -146,7 +166,7 @@ export default function Page() {
     </span>
   );
 
-  /* ===== DYNAMIC STYLES (DARK/LIGHT) ===== */
+  /* ===== DYNAMIC STYLES ===== */
   const theme = {
     bg: darkMode ? "#121212" : "#f5f5f5",
     text: darkMode ? "#e0e0e0" : "#333",
@@ -158,6 +178,51 @@ export default function Page() {
     subText: darkMode ? "#aaa" : "#666"
   };
 
+  /* ===== TAMPILAN JIKA TOKO TUTUP ===== */
+  if (!loading && !isStoreOpen) {
+    return (
+      <div style={{ 
+        background: theme.bg, 
+        minHeight: "100vh", 
+        color: theme.text, 
+        fontFamily: "sans-serif",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+        textAlign: "center"
+      }}>
+        <img src="/logo.png" height={60} alt="Logo" style={{marginBottom: 20}} />
+        <h2 style={{color: "#FF4444", fontSize: 28, marginBottom: 10}}>🔴 TOKO TUTUP</h2>
+        <p style={{color: theme.subText, maxWidth: 300, marginBottom: 30}}>
+          Maaf ya, admin lagi istirahat atau stok lagi di-restock. Cek lagi nanti ya!
+        </p>
+        
+        <button 
+          onClick={contactAdmin}
+          style={{
+            background: "#25D366", 
+            color: "#fff", 
+            border: "none", 
+            padding: "12px 24px", 
+            borderRadius: 50, 
+            fontSize: 16, 
+            fontWeight: "bold",
+            cursor: "pointer",
+            display: "flex", 
+            alignItems: "center", 
+            gap: 8,
+            boxShadow: "0 4px 10px rgba(37, 211, 102, 0.4)"
+          }}
+        >
+          <span>💬 Chat WhatsApp Admin</span>
+        </button>
+      </div>
+    );
+  }
+
+  /* ===== TAMPILAN NORMAL (TOKO BUKA) ===== */
   return (
     <div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, fontFamily: "sans-serif" }}>
       {/* HEADER */}
@@ -167,7 +232,6 @@ export default function Page() {
         </div>
         
         <div style={{display:"flex", alignItems:"center", gap: 15}}>
-            {/* TOMBOL DARK MODE */}
             <div style={{cursor:"pointer", fontSize: 20}} onClick={toggleTheme}>
                 {darkMode ? "☀️" : "🌙"}
             </div>
