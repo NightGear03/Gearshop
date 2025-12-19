@@ -210,9 +210,9 @@ export default function Page() {
 
           {/* INPUT IGN / NAMA PEMBELI (AUTO SAVE) */}
           <div style={{marginBottom: 15, background: "#f9f9f9", padding: 10, borderRadius: 8, border: "1px solid #eee"}}>
-            <div style={{fontSize: 12, fontWeight: "bold", marginBottom: 5, color:"#555"}}>Nama In-Game (IGN):</div>
+            <div style={{fontSize: 12, fontWeight: "bold", marginBottom: 5, color:"#555"}}>Nick Rucoy Online:</div>
             <input 
-                placeholder="Contoh: DragonSlayer99"
+                placeholder="Contoh: NoobMaster69"
                 value={ign}
                 onChange={e => {
                     setIgn(e.target.value);
