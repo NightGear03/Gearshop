@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 export default function Page() {
   /* ===== STATE DATA ===== */
   const [items, setItems] = useState([]);
-  const [heroItems, setHeroItems] = useState([]); // State khusus buat nampung item Hero
+  const [heroItems, setHeroItems] = useState([]); 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [sort, setSort] = useState("default");
@@ -36,8 +36,22 @@ export default function Page() {
           .filter(r => r.trim() !== "")
           .map(r => {
             const c = r.split(",");
+            const catRaw = c[0]?.trim() || "Uncategorized";
+            
+            // LOGIC KHUSUS BARIS #HERO
+            // Kalau ini baris Hero, kita bajak kolom ke-3 (index 2) bukan jadi Harga, tapi jadi Target Kategori
+            if (catRaw.toUpperCase() === "#HERO") {
+                return {
+                    kategori: "#HERO",
+                    nama: c[1]?.trim() || "Unknown",
+                    targetKategori: c[2]?.trim(), // <--- INI KUNCINYA (Baca Kolom C sebagai String)
+                    status: "System"
+                };
+            }
+
+            // BARIS NORMAL (PARSING HARGA JADI ANGKA)
             return {
-              kategori: c[0]?.trim() || "Uncategorized",
+              kategori: catRaw,
               nama: c[1]?.trim() || "Unknown",
               buy: parseInt(c[2]?.replace(/\D/g, '')) || 0,
               sell: parseInt(c[3]?.replace(/\D/g, '')) || 0,
@@ -56,26 +70,31 @@ export default function Page() {
           setIsStoreOpen(true);
         }
 
-        /* --- 2. LOGIC CEK HERO ITEMS --- */
-        // Ambil semua baris yang kategorinya #HERO
-        const heroRows = parsed.filter(item => item.kategori?.toUpperCase() === "#HERO");
-        const heroNames = heroRows.map(h => h.nama.toLowerCase().trim());
-
-        // Cari data asli item tersebut di list parsed
-        // Kita cari item yang BUKAN #HERO, tapi namanya ada di daftar heroNames
+        /* --- 2. LOGIC CEK HERO ITEMS (STRICT MATCH) --- */
+        const heroRows = parsed.filter(item => item.kategori === "#HERO");
+        
+        // Cari item asli yang Nama DAN Kategorinya cocok sama request #HERO
         const realItems = parsed.filter(item => 
-            item.kategori?.toUpperCase() !== "#SYSTEM" && 
-            item.kategori?.toUpperCase() !== "#HERO"
+            item.kategori !== "#SYSTEM" && 
+            item.kategori !== "#HERO"
         );
 
-        // Filter item asli yang namanya cocok sama request #HERO
-        const heroData = realItems.filter(item => heroNames.includes(item.nama.toLowerCase().trim()));
-        setHeroItems(heroData);
+        const matchedHeroes = [];
+        heroRows.forEach(h => {
+            // Cari item real yang namanya SAMA dan kategorinya SAMA dengan request di sheet
+            const found = realItems.find(item => 
+                item.nama.toLowerCase() === h.nama.toLowerCase() && 
+                item.kategori.toLowerCase() === h.targetKategori?.toLowerCase()
+            );
+            if (found) matchedHeroes.push(found);
+        });
+        
+        setHeroItems(matchedHeroes);
 
         /* --- 3. SET DATA UTAMA --- */
         setItems(realItems);
 
-        // Load IGN & Dark Mode Setting
+        // Load Settings
         const savedIgn = localStorage.getItem("gearShopIGN");
         if (savedIgn) setIgn(savedIgn);
         
@@ -196,7 +215,7 @@ export default function Page() {
     modalBg: darkMode ? "#1e1e1e" : "#fff",
     subText: darkMode ? "#aaa" : "#666",
     heroBg: darkMode ? "linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%)" : "linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%)",
-    heroBorder: "1px solid #B8860B" // Gold Border khusus Hero
+    heroBorder: "1px solid #B8860B"
   };
 
   /* ===== TAMPILAN JIKA TOKO TUTUP ===== */
@@ -234,7 +253,7 @@ export default function Page() {
 
       <main style={{ padding: 16 }}>
         
-        {/* === HERO SECTION (NEW) === */}
+        {/* === HERO SECTION (STRICT MATCH) === */}
         {heroItems.length > 0 && (
           <div style={{ marginBottom: 24 }}>
             <h3 style={{ margin: "0 0 10px 0", fontSize: 14, color: "#B8860B", textTransform: "uppercase", letterSpacing: 1 }}>🔥 Hot Items</h3>
@@ -244,7 +263,7 @@ export default function Page() {
               gap: 12 
             }}>
               {heroItems.map(h => (
-                <div key={`hero-${h.nama}`} style={{
+                <div key={`hero-${h.nama}-${h.kategori}`} style={{
                   background: theme.heroBg, 
                   border: theme.heroBorder, 
                   borderRadius: 12, 
