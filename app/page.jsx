@@ -107,12 +107,20 @@ export default function Page() {
 
   const sendWA = () => {
     if (!cart.length) return;
+    // Di WA kita pakai teks "Gold" biar jelas terbaca
     const itemText = cart.map(
-      c => `${c.nama} (${c.mode}) x${c.qty} = ${(c.mode === "buy" ? c.buy : c.sell) * c.qty}`
+      c => `${c.nama} (${c.mode}) x${c.qty} = ${(c.mode === "buy" ? c.buy : c.sell).toLocaleString('id-ID')} Gold`
     ).join("%0A");
-    const message = `Halo,%20saya%20mau%20order:%0A${itemText}%0A%0ATotal:%20${totalPrice}`;
+    const message = `Halo,%20saya%20mau%20order:%0A${itemText}%0A%0ATotal:%20${totalPrice.toLocaleString('id-ID')}%20Gold`;
     window.open(`https://wa.me/6283101456267?text=${message}`, "_blank");
   };
+
+  /* Helper Format Gold dengan Icon */
+  const formatGold = (val) => (
+    <span style={{ fontWeight: "bold", color: "#B8860B" }}>
+      {val.toLocaleString('id-ID')} 🪙
+    </span>
+  );
 
   return (
     <>
@@ -160,8 +168,11 @@ export default function Page() {
                 </span>
               </div>
               <div style={{ fontSize: 13, color: "#666" }}>{i.kategori}</div>
-              <div>Buy: {i.buy.toLocaleString()}</div>
-              <div>Sell: {i.sell.toLocaleString()}</div>
+              
+              {/* HARGA DENGAN FORMAT GOLD */}
+              <div>Buy: {formatGold(i.buy)}</div>
+              <div>Sell: {formatGold(i.sell)}</div>
+              
               {i.promo && <div style={promo}>{i.promo}</div>}
               <div>Status: {statusLabel(i.status)}</div>
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
@@ -173,23 +184,36 @@ export default function Page() {
         )}
       </main>
 
-      {/* CART PANEL */}
-      <div style={{ ...cartPanel, transform: cartOpen ? "translateX(0)" : "translateX(100%)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+      {/* CART PANEL (Sudah termasuk Perbaikan No 2 & 3) */}
+      <div style={{ ...cartPanel, transform: cartOpen ? "translateX(0)" : "translateX(100%)", display: "flex", flexDirection: "column", justifyContent: "space-between", paddingBottom: 60 }}>
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 15 }}>
             <h3 style={{ margin: 0 }}>Keranjang</h3>
             <button onClick={() => setCartOpen(false)} style={{ border: "none", background: "none", fontSize: 24 }}>✕</button>
           </div>
-          {/* List scrollable agar tidak mendorong footer ke bawah layar */}
-          <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
+          
+          <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
             {cart.map(c => (
               <div key={c.key} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, borderBottom: "1px solid #eee", paddingBottom: 8 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: "bold" }}>{c.nama}</div>
-                  <div style={{ fontSize: 12, color: "#666" }}>{c.mode === "buy" ? "Beli" : "Jual"}</div>
+                  
+                  {/* Perbaikan No 2: Warna Beli/Jual */}
+                  <div style={{ 
+                    fontSize: 12, 
+                    fontWeight: "bold", 
+                    color: c.mode === "buy" ? "#25D366" : "#FF8C00" 
+                  }}>
+                    {c.mode === "buy" ? "Beli" : "Jual"}
+                  </div>
                 </div>
                 <input type="number" value={c.qty} onChange={e => updateQty(c, parseInt(e.target.value))} style={{ width: 45, padding: "4px", textAlign: "center" }} />
-                <span style={{ fontSize: 14, minWidth: 40, textAlign: "right" }}>{(c.mode === "buy" ? c.buy : c.sell) * c.qty}</span>
+                
+                {/* Nominal di Cart pakai Gold */}
+                <span style={{ fontSize: 13, minWidth: 40, textAlign: "right" }}>
+                   {formatGold((c.mode === "buy" ? c.buy : c.sell) * c.qty)}
+                </span>
+                
                 <button onClick={() => removeFromCart(c)} style={{ border: "none", background: "none", color: "red", marginLeft: 5 }}>✕</button>
               </div>
             ))}
@@ -202,10 +226,13 @@ export default function Page() {
               <span>Total Item:</span>
               <span>{totalQty}</span>
             </div>
+            
+            {/* TOTAL HARGA GOLD */}
             <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", fontSize: 18, marginTop: 4, marginBottom: 15 }}>
               <span>Total Harga:</span>
-              <span>{totalPrice.toLocaleString()}</span>
+              <span>{formatGold(totalPrice)}</span>
             </div>
+            
             <button style={{ ...btn, background: "#25D366", padding: 16, width: "100%", fontSize: 16, fontWeight: "bold" }} onClick={() => setConfirmOpen(true)}>
               Checkout WA
             </button>
@@ -222,7 +249,7 @@ export default function Page() {
             <h3 style={{ marginTop: 0, textAlign: "center" }}>Konfirmasi</h3>
             <div style={{ marginBottom: 20, textAlign: "center" }}>
               Total Pesanan:<br/>
-              <strong style={{ fontSize: 20 }}>{totalPrice.toLocaleString()}</strong>
+              <strong style={{ fontSize: 20 }}>{formatGold(totalPrice)}</strong>
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button style={{ ...btn, background: "#eee", color: "#333", padding: 12 }} onClick={() => setConfirmOpen(false)}>Batal</button>
