@@ -97,6 +97,8 @@ export default function Page() {
     setCart(cart.filter(c=>c.key!==item.key));
   };
 
+  const totalQty = cart.reduce((s,c)=>s+c.qty,0);
+
   const totalPrice = cart.reduce(
     (s,c)=>s+(c.mode==="buy"?c.buy:c.sell)*c.qty,0
   );
@@ -169,10 +171,20 @@ export default function Page() {
               <div>Status: {statusLabel(i.status)}</div>
 
               <div style={{display:"flex",gap:8,marginTop:8}}>
-                <button disabled={!canBuy(i.status)} style={{...btn,background:canBuy(i.status)?"#25D366":"#ccc"}}
-                  onClick={()=>addToCart(i,"buy")}>Beli</button>
-                <button disabled={!canSell(i.status)} style={{...btn,background:canSell(i.status)?"#FF8C00":"#ccc"}}
-                  onClick={()=>addToCart(i,"sell")}>Jual</button>
+                <button
+                  disabled={!canBuy(i.status)}
+                  style={{...btn,background:canBuy(i.status)?"#25D366":"#ccc"}}
+                  onClick={()=>addToCart(i,"buy")}
+                >
+                  Beli
+                </button>
+                <button
+                  disabled={!canSell(i.status)}
+                  style={{...btn,background:canSell(i.status)?"#FF8C00":"#ccc"}}
+                  onClick={()=>addToCart(i,"sell")}
+                >
+                  Jual
+                </button>
               </div>
             </div>
           ))
@@ -190,16 +202,39 @@ export default function Page() {
         {cart.map(c=>(
           <div key={c.key} style={{display:"flex",alignItems:"center",gap:6}}>
             <span style={{flex:1}}>{c.nama} ({c.mode})</span>
-            <input type="number" value={c.qty} onChange={e=>updateQty(c,parseInt(e.target.value))} style={{width:50}}/>
+            <input
+              type="number"
+              value={c.qty}
+              onChange={e=>updateQty(c,parseInt(e.target.value))}
+              style={{width:50}}
+            />
             <span>{(c.mode==="buy"?c.buy:c.sell)*c.qty}</span>
             <button onClick={()=>removeFromCart(c)}>X</button>
           </div>
         ))}
 
+        {/* TOTAL (BALIK LAGI) */}
         {cart.length>0 && (
-          <button style={{...btn,background:"#25D366",marginTop:10}} onClick={()=>setConfirmOpen(true)}>
-            Checkout WA
-          </button>
+          <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #ddd"}}>
+            <div><strong>Total Item:</strong> {totalQty}</div>
+            <div style={{marginTop:4}}>
+              <strong>Total Harga:</strong> {totalPrice}
+            </div>
+
+            <button
+              style={{
+                ...btn,
+                background:"#25D366",
+                marginTop:16,
+                padding:14,
+                fontSize:16,
+                fontWeight:"bold"
+              }}
+              onClick={()=>setConfirmOpen(true)}
+            >
+              Checkout WA
+            </button>
+          </div>
         )}
       </div>
 
@@ -210,7 +245,10 @@ export default function Page() {
           <div style={modal}>
             <h3>Konfirmasi</h3>
             <div>Total: {totalPrice}</div>
-            <button style={{...btn,background:"#25D366"}} onClick={()=>{sendWA();setConfirmOpen(false)}}>
+            <button
+              style={{...btn,background:"#25D366",marginTop:12}}
+              onClick={()=>{sendWA();setConfirmOpen(false)}}
+            >
               Lanjut WA
             </button>
           </div>
@@ -227,7 +265,7 @@ const cartBadge={position:"absolute",top:-6,right:-6,background:"red",color:"#ff
 const input={width:"100%",padding:10,marginBottom:12,borderRadius:8,border:"1px solid #ccc"};
 const card={border:"1px solid #ddd",borderRadius:10,padding:12,marginBottom:10};
 const promo={background:"#FFD700",padding:"2px 6px",borderRadius:4,fontSize:12};
-const btn={flex:1,color:"#fff",border:"none",padding:10,borderRadius:8};
+const btn={flex:1,color:"#fff",border:"none",borderRadius:8};
 const cartPanel={position:"fixed",top:0,right:0,width:300,height:"100%",background:"#fff",padding:16,boxShadow:"-2px 0 8px rgba(0,0,0,.2)",transition:"0.3s",zIndex:999};
 const backdrop={position:"fixed",inset:0,background:"rgba(0,0,0,.3)",zIndex:998};
 const modalWrap={position:"fixed",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.4)",zIndex:1000};
