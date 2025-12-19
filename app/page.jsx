@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 export default function Page() {
   /* ===== STATE DATA ===== */
   const [items, setItems] = useState([]);
+  const [heroItems, setHeroItems] = useState([]); // State khusus buat nampung item Hero
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [sort, setSort] = useState("default");
@@ -18,7 +19,7 @@ export default function Page() {
 
   /* ===== STATE DARK MODE & STORE STATUS ===== */
   const [darkMode, setDarkMode] = useState(true);
-  const [isStoreOpen, setIsStoreOpen] = useState(true); // Default Buka sebelum data ke-load
+  const [isStoreOpen, setIsStoreOpen] = useState(true);
 
   /* ===== LOAD DATA ===== */
   useEffect(() => {
@@ -45,22 +46,33 @@ export default function Page() {
             };
           });
 
-        /* --- LOGIC CEK STATUS TOKO --- */
-        // Cari baris yang kategorinya #SYSTEM dan Namanya STATUS_TOKO
+        /* --- 1. LOGIC CEK STATUS TOKO --- */
         const systemRow = parsed.find(
           item => item.kategori?.toUpperCase() === "#SYSTEM" && item.nama?.toUpperCase() === "STATUS_TOKO"
         );
-        
-        // Kalau ketemu barisnya, cek statusnya TUTUP atau BUKA. Kalau gak ketemu, anggap BUKA.
         if (systemRow && systemRow.status?.toUpperCase() === "TUTUP") {
           setIsStoreOpen(false);
         } else {
           setIsStoreOpen(true);
         }
 
-        // Filter biar baris #SYSTEM gak muncul di list barang jualan
-        const realItems = parsed.filter(item => item.kategori?.toUpperCase() !== "#SYSTEM");
-        
+        /* --- 2. LOGIC CEK HERO ITEMS --- */
+        // Ambil semua baris yang kategorinya #HERO
+        const heroRows = parsed.filter(item => item.kategori?.toUpperCase() === "#HERO");
+        const heroNames = heroRows.map(h => h.nama.toLowerCase().trim());
+
+        // Cari data asli item tersebut di list parsed
+        // Kita cari item yang BUKAN #HERO, tapi namanya ada di daftar heroNames
+        const realItems = parsed.filter(item => 
+            item.kategori?.toUpperCase() !== "#SYSTEM" && 
+            item.kategori?.toUpperCase() !== "#HERO"
+        );
+
+        // Filter item asli yang namanya cocok sama request #HERO
+        const heroData = realItems.filter(item => heroNames.includes(item.nama.toLowerCase().trim()));
+        setHeroItems(heroData);
+
+        /* --- 3. SET DATA UTAMA --- */
         setItems(realItems);
 
         // Load IGN & Dark Mode Setting
@@ -142,7 +154,7 @@ export default function Page() {
   const totalQty = cart.reduce((s, c) => s + c.qty, 0);
   const totalPrice = cart.reduce((s, c) => s + (c.mode === "buy" ? c.buy : c.sell) * c.qty, 0);
 
-  /* ===== SEND WA LOGIC (UPDATED WITH CATEGORY FILTER) ===== */
+  /* ===== SEND WA LOGIC ===== */
   const sendWA = () => {
     if (!cart.length) return;
     const userName = ign.trim() || "Guest";
@@ -151,14 +163,11 @@ export default function Page() {
         const unitPrice = c.mode === "buy" ? c.buy : c.sell;
         const subTotal = unitPrice * c.qty;
         
-        // LOGIC BARU: Cek Kategori
         let displayCategory = "";
-        // Jika kategori BUKAN Diamond, tambahkan label [Kategori]
         if (c.kategori && !c.kategori.toLowerCase().includes("diamond")) {
             displayCategory = `[${c.kategori}] `;
         }
 
-        // Format Pesan: [Kategori] Nama Barang (Mode) xQty = Harga
         return `${displayCategory}${c.nama} (${c.mode}) x${c.qty} = ${subTotal.toLocaleString('id-ID')} Gold`;
     }).join("%0A");
 
@@ -170,7 +179,6 @@ export default function Page() {
     window.open("https://wa.me/6283101456267?text=Halo%20Admin,%20mau%20tanya-tanya%20dong.", "_blank");
   }
 
-  /* Helper Format Gold */
   const formatGold = (val) => (
     <span style={{ fontWeight: "bold", color: "#B8860B" }}>
       {val.toLocaleString('id-ID')} 🪙
@@ -186,54 +194,26 @@ export default function Page() {
     inputBg: darkMode ? "#2c2c2c" : "#fff",
     inputBorder: darkMode ? "1px solid #444" : "1px solid #ccc",
     modalBg: darkMode ? "#1e1e1e" : "#fff",
-    subText: darkMode ? "#aaa" : "#666"
+    subText: darkMode ? "#aaa" : "#666",
+    heroBg: darkMode ? "linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%)" : "linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%)",
+    heroBorder: "1px solid #B8860B" // Gold Border khusus Hero
   };
 
   /* ===== TAMPILAN JIKA TOKO TUTUP ===== */
   if (!loading && !isStoreOpen) {
     return (
-      <div style={{ 
-        background: theme.bg, 
-        minHeight: "100vh", 
-        color: theme.text, 
-        fontFamily: "sans-serif",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20,
-        textAlign: "center"
-      }}>
+      <div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, fontFamily: "sans-serif", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20, textAlign: "center" }}>
         <img src="/logo.png" height={60} alt="Logo" style={{marginBottom: 20}} />
         <h2 style={{color: "#FF4444", fontSize: 28, marginBottom: 10}}>🔴 TOKO TUTUP</h2>
-        <p style={{color: theme.subText, maxWidth: 300, marginBottom: 30}}>
-          Maaf ya, admin lagi istirahat atau stok lagi di-restock. Cek lagi nanti ya!
-        </p>
-        
-        <button 
-          onClick={contactAdmin}
-          style={{
-            background: "#25D366", 
-            color: "#fff", 
-            border: "none", 
-            padding: "12px 24px", 
-            borderRadius: 50, 
-            fontSize: 16, 
-            fontWeight: "bold",
-            cursor: "pointer",
-            display: "flex", 
-            alignItems: "center", 
-            gap: 8,
-            boxShadow: "0 4px 10px rgba(37, 211, 102, 0.4)"
-          }}
-        >
+        <p style={{color: theme.subText, maxWidth: 300, marginBottom: 30}}>Maaf ya, admin lagi istirahat. Cek lagi nanti ya!</p>
+        <button onClick={contactAdmin} style={{ background: "#25D366", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 50, fontSize: 16, fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, boxShadow: "0 4px 10px rgba(37, 211, 102, 0.4)" }}>
           <span>💬 Chat WhatsApp Admin</span>
         </button>
       </div>
     );
   }
 
-  /* ===== TAMPILAN NORMAL (TOKO BUKA) ===== */
+  /* ===== TAMPILAN NORMAL ===== */
   return (
     <div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, fontFamily: "sans-serif" }}>
       {/* HEADER */}
@@ -241,12 +221,10 @@ export default function Page() {
         <div style={{display:"flex", alignItems:"center", gap: 10}}>
             <img src="/logo.png" height={36} alt="Logo" />
         </div>
-        
         <div style={{display:"flex", alignItems:"center", gap: 15}}>
             <div style={{cursor:"pointer", fontSize: 20}} onClick={toggleTheme}>
                 {darkMode ? "☀️" : "🌙"}
             </div>
-            
             <div style={styles.cartIcon} onClick={() => setCartOpen(true)}>
                 🛒
                 {cart.length > 0 && <span style={styles.cartBadge}>{totalQty}</span>}
@@ -255,6 +233,52 @@ export default function Page() {
       </header>
 
       <main style={{ padding: 16 }}>
+        
+        {/* === HERO SECTION (NEW) === */}
+        {heroItems.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <h3 style={{ margin: "0 0 10px 0", fontSize: 14, color: "#B8860B", textTransform: "uppercase", letterSpacing: 1 }}>🔥 Hot Items</h3>
+            <div style={{ 
+              display: "grid", 
+              gridTemplateColumns: heroItems.length === 1 ? "1fr" : "repeat(auto-fit, minmax(140px, 1fr))", 
+              gap: 12 
+            }}>
+              {heroItems.map(h => (
+                <div key={`hero-${h.nama}`} style={{
+                  background: theme.heroBg, 
+                  border: theme.heroBorder, 
+                  borderRadius: 12, 
+                  padding: 16, 
+                  position: "relative",
+                  boxShadow: "0 4px 15px rgba(184, 134, 11, 0.15)"
+                }}>
+                  <div style={{position: "absolute", top: 10, right: 10, fontSize: 20}}>⭐</div>
+                  <div style={{fontSize: 12, color: theme.subText, marginBottom: 4}}>{h.kategori}</div>
+                  <strong style={{fontSize: 18, display: "block", marginBottom: 8}}>{h.nama}</strong>
+                  <div style={{fontSize: 14, marginBottom: 12}}>Buy: {formatGold(h.buy)}</div>
+                  <button 
+                    disabled={!canBuy(h.status)} 
+                    style={{
+                        width: "100%", 
+                        padding: 10, 
+                        background: canBuy(h.status) ? "#B8860B" : "#555", 
+                        color: "#fff", 
+                        border: "none", 
+                        borderRadius: 8, 
+                        fontWeight: "bold", 
+                        cursor: "pointer"
+                    }}
+                    onClick={() => addToCart(h, "buy")}
+                  >
+                    BELI SEKARANG
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* === END HERO SECTION === */}
+
         <input
           placeholder="Cari item..."
           value={search}
@@ -329,7 +353,6 @@ export default function Page() {
                 <button onClick={() => setCartOpen(false)} style={{ border: "none", background: "none", fontSize: 24, color: theme.text }}>✕</button>
               </div>
 
-              {/* INPUT IGN */}
               <div style={{marginBottom: 15, background: darkMode ? "#2c2c2c" : "#f9f9f9", padding: 10, borderRadius: 8, border: theme.inputBorder}}>
                 <div style={{fontSize: 12, fontWeight: "bold", marginBottom: 5, color: theme.subText}}>Nama In-Game (IGN):</div>
                 <input 
@@ -339,12 +362,7 @@ export default function Page() {
                         setIgn(e.target.value);
                         localStorage.setItem("gearShopIGN", e.target.value);
                     }}
-                    style={{
-                        ...styles.input, 
-                        marginBottom: 0, padding: 8, fontSize: 14, 
-                        background: darkMode ? "#1e1e1e" : "#fff", 
-                        color: theme.text, border: theme.inputBorder
-                    }}
+                    style={{...styles.input, marginBottom: 0, padding: 8, fontSize: 14, background: darkMode ? "#1e1e1e" : "#fff", color: theme.text, border: theme.inputBorder}}
                 />
               </div>
               
@@ -353,9 +371,7 @@ export default function Page() {
                   <div key={c.key} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, borderBottom: darkMode ? "1px solid #333" : "1px solid #eee", paddingBottom: 8 }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 14, fontWeight: "bold" }}>{c.nama}</div>
-                      <div style={{ fontSize: 12, fontWeight: "bold", color: c.mode === "buy" ? "#25D366" : "#FF8C00" }}>
-                        {c.mode === "buy" ? "Beli" : "Jual"}
-                      </div>
+                      <div style={{ fontSize: 12, fontWeight: "bold", color: c.mode === "buy" ? "#25D366" : "#FF8C00" }}>{c.mode === "buy" ? "Beli" : "Jual"}</div>
                     </div>
                     <input type="number" value={c.qty} onChange={e => updateQty(c, parseInt(e.target.value))} style={{ width: 45, padding: "4px", textAlign: "center", background: theme.inputBg, color: theme.text, border: theme.inputBorder, borderRadius: 4 }} />
                     <span style={{ fontSize: 13, minWidth: 40, textAlign: "right" }}>
