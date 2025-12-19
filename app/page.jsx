@@ -14,11 +14,15 @@ export default function Page() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [wishlist, setWishlist] = useState([]);
 
-  /* ===== LOAD SHEET ===== */
+  /* STATE BARU: IGN (IN GAME NAME) */
+  const [ign, setIgn] = useState("");
+
+  /* ===== LOAD SHEET & LOAD IGN ===== */
   useEffect(() => {
     async function loadData() {
       setLoading(true);
       try {
+        // 1. Load Data Sheet
         const res = await fetch(
           "https://docs.google.com/spreadsheets/d/1LFLYLmzl-YbYaYoFpEInQKGGzA9nuGzDA_0w9ulArJs/export?format=csv"
         );
@@ -38,8 +42,14 @@ export default function Page() {
               promo: c[5]?.trim() || null
             };
           });
-
         setItems(parsed);
+
+        // 2. Load Auto-Save IGN dari LocalStorage
+        const savedIgn = localStorage.getItem("gearShopIGN");
+        if (savedIgn) {
+          setIgn(savedIgn);
+        }
+
       } catch (err) {
         console.error("Fetch error:", err);
       } finally {
@@ -105,24 +115,26 @@ export default function Page() {
   const totalQty = cart.reduce((s, c) => s + c.qty, 0);
   const totalPrice = cart.reduce((s, c) => s + (c.mode === "buy" ? c.buy : c.sell) * c.qty, 0);
 
-  /* ===== FIX LOGIC WA (PERBAIKAN UTAMA) ===== */
+  /* ===== SEND WA (UPDATE IGN) ===== */
   const sendWA = () => {
     if (!cart.length) return;
+    
+    // Ambil nama user atau default 'Guest'
+    const userName = ign.trim() || "Guest";
+
     const itemText = cart.map(c => {
-        // 1. Ambil harga satuan
         const unitPrice = c.mode === "buy" ? c.buy : c.sell;
-        // 2. Hitung SUBTOTAL (Satuan x Jumlah)
         const subTotal = unitPrice * c.qty;
-        
-        // 3. Tampilkan SUBTOTAL di teks WA, bukan unitPrice
         return `${c.nama} (${c.mode}) x${c.qty} = ${subTotal.toLocaleString('id-ID')} Gold`;
     }).join("%0A");
 
-    const message = `Halo,%20saya%20mau%20order:%0A${itemText}%0A%0ATotal:%20${totalPrice.toLocaleString('id-ID')}%20Gold`;
+    // Masukkan IGN ke dalam pesan
+    const message = `Halo,%20saya%20*${encodeURIComponent(userName)}*%20mau%20order:%0A${itemText}%0A%0ATotal:%20${totalPrice.toLocaleString('id-ID')}%20Gold`;
+    
     window.open(`https://wa.me/6283101456267?text=${message}`, "_blank");
   };
 
-  /* Helper Format Gold dengan Icon */
+  /* Helper Format Gold */
   const formatGold = (val) => (
     <span style={{ fontWeight: "bold", color: "#B8860B" }}>
       {val.toLocaleString('id-ID')} 🪙
@@ -175,11 +187,8 @@ export default function Page() {
                 </span>
               </div>
               <div style={{ fontSize: 13, color: "#666" }}>{i.kategori}</div>
-              
-              {/* HARGA DENGAN FORMAT GOLD */}
               <div>Buy: {formatGold(i.buy)}</div>
               <div>Sell: {formatGold(i.sell)}</div>
-              
               {i.promo && <div style={promo}>{i.promo}</div>}
               <div>Status: {statusLabel(i.status)}</div>
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
@@ -198,29 +207,34 @@ export default function Page() {
             <h3 style={{ margin: 0 }}>Keranjang</h3>
             <button onClick={() => setCartOpen(false)} style={{ border: "none", background: "none", fontSize: 24 }}>✕</button>
           </div>
+
+          {/* INPUT IGN / NAMA PEMBELI (AUTO SAVE) */}
+          <div style={{marginBottom: 15, background: "#f9f9f9", padding: 10, borderRadius: 8, border: "1px solid #eee"}}>
+            <div style={{fontSize: 12, fontWeight: "bold", marginBottom: 5, color:"#555"}}>Nama In-Game (IGN):</div>
+            <input 
+                placeholder="Contoh: DragonSlayer99"
+                value={ign}
+                onChange={e => {
+                    setIgn(e.target.value);
+                    localStorage.setItem("gearShopIGN", e.target.value); // Auto Save
+                }}
+                style={{...input, marginBottom: 0, padding: 8, fontSize: 14}}
+            />
+          </div>
           
-          <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
+          <div style={{ maxHeight: "45vh", overflowY: "auto" }}>
             {cart.map(c => (
               <div key={c.key} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, borderBottom: "1px solid #eee", paddingBottom: 8 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: "bold" }}>{c.nama}</div>
-                  
-                  {/* Status Warna Beli/Jual */}
-                  <div style={{ 
-                    fontSize: 12, 
-                    fontWeight: "bold", 
-                    color: c.mode === "buy" ? "#25D366" : "#FF8C00" 
-                  }}>
+                  <div style={{ fontSize: 12, fontWeight: "bold", color: c.mode === "buy" ? "#25D366" : "#FF8C00" }}>
                     {c.mode === "buy" ? "Beli" : "Jual"}
                   </div>
                 </div>
                 <input type="number" value={c.qty} onChange={e => updateQty(c, parseInt(e.target.value))} style={{ width: 45, padding: "4px", textAlign: "center" }} />
-                
-                {/* Nominal di Cart pakai Gold */}
                 <span style={{ fontSize: 13, minWidth: 40, textAlign: "right" }}>
                    {formatGold((c.mode === "buy" ? c.buy : c.sell) * c.qty)}
                 </span>
-                
                 <button onClick={() => removeFromCart(c)} style={{ border: "none", background: "none", color: "red", marginLeft: 5 }}>✕</button>
               </div>
             ))}
@@ -233,13 +247,10 @@ export default function Page() {
               <span>Total Item:</span>
               <span>{totalQty}</span>
             </div>
-            
-            {/* TOTAL HARGA GOLD */}
             <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", fontSize: 18, marginTop: 4, marginBottom: 15 }}>
               <span>Total Harga:</span>
               <span>{formatGold(totalPrice)}</span>
             </div>
-            
             <button style={{ ...btn, background: "#25D366", padding: 16, width: "100%", fontSize: 16, fontWeight: "bold" }} onClick={() => setConfirmOpen(true)}>
               Checkout WA
             </button>
@@ -254,7 +265,9 @@ export default function Page() {
         <div style={modalWrap} onClick={() => setConfirmOpen(false)}>
           <div style={modal} onClick={e => e.stopPropagation()}>
             <h3 style={{ marginTop: 0, textAlign: "center" }}>Konfirmasi</h3>
-            <div style={{ marginBottom: 20, textAlign: "center" }}>
+            <div style={{ marginBottom: 15, textAlign: "center" }}>
+              <div>Order atas nama:</div>
+              <div style={{fontWeight:"bold", fontSize:16, color:"#3C6EE2", marginBottom: 10}}>{ign || "Guest"}</div>
               Total Pesanan:<br/>
               <strong style={{ fontSize: 20 }}>{formatGold(totalPrice)}</strong>
             </div>
