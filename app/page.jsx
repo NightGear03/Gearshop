@@ -142,13 +142,24 @@ export default function Page() {
   const totalQty = cart.reduce((s, c) => s + c.qty, 0);
   const totalPrice = cart.reduce((s, c) => s + (c.mode === "buy" ? c.buy : c.sell) * c.qty, 0);
 
+  /* ===== SEND WA LOGIC (UPDATED WITH CATEGORY FILTER) ===== */
   const sendWA = () => {
     if (!cart.length) return;
     const userName = ign.trim() || "Guest";
+    
     const itemText = cart.map(c => {
         const unitPrice = c.mode === "buy" ? c.buy : c.sell;
         const subTotal = unitPrice * c.qty;
-        return `${c.nama} (${c.mode}) x${c.qty} = ${subTotal.toLocaleString('id-ID')} Gold`;
+        
+        // LOGIC BARU: Cek Kategori
+        let displayCategory = "";
+        // Jika kategori BUKAN Diamond, tambahkan label [Kategori]
+        if (c.kategori && !c.kategori.toLowerCase().includes("diamond")) {
+            displayCategory = `[${c.kategori}] `;
+        }
+
+        // Format Pesan: [Kategori] Nama Barang (Mode) xQty = Harga
+        return `${displayCategory}${c.nama} (${c.mode}) x${c.qty} = ${subTotal.toLocaleString('id-ID')} Gold`;
     }).join("%0A");
 
     const message = `Halo,%20saya%20*${encodeURIComponent(userName)}*%20mau%20order:%0A${itemText}%0A%0ATotal:%20${totalPrice.toLocaleString('id-ID')}%20Gold`;
