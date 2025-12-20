@@ -434,50 +434,94 @@ export default function Page() {
                 {!auctionData.isEnded && (
                     <div style={{display:"flex", gap: 10, flexDirection: "column", marginTop: 20}}>
                         
-                        <div style={{display:"flex", gap: 8}}>
-                            <div style={{flex: 1, position: "relative"}}>
+                        {/* INPUT & TOMBOL BID (FIXED UI) */}
+                        <div style={{display:"flex", gap: 8, alignItems: "stretch"}}>
+                            <div style={{flex: 1, position: "relative", minWidth: 0}}>
                                 <input 
                                     type="number" 
                                     placeholder={`${auctionData.currentBid + auctionData.increment}`}
                                     value={bidAmount}
                                     onChange={e => setBidAmount(e.target.value)}
-                                    style={{...styles.input, marginBottom:0, width: "100%", paddingRight: 40, background: theme.inputBg, color:theme.text, border:theme.inputBorder}}
+                                    style={{
+                                        ...styles.input, 
+                                        marginBottom:0, 
+                                        width: "100%", 
+                                        height: "100%",
+                                        paddingRight: 10, 
+                                        background: theme.inputBg, 
+                                        color:theme.text, 
+                                        border:theme.inputBorder,
+                                        fontSize: 16,
+                                        fontWeight: "bold"
+                                    }}
                                 />
                             </div>
                             <button 
                                 onClick={() => handleBid("BID")} 
                                 disabled={bidLoading}
-                                style={{background: "#FF4444", color:"white", border:"none", borderRadius:8, padding:"0 24px", fontWeight:"bold", cursor: "pointer", fontSize: 16}}
+                                style={{
+                                    flexShrink: 0, 
+                                    minWidth: "80px",
+                                    background: "#FF4444", 
+                                    color: "white", 
+                                    border: "none", 
+                                    borderRadius: 8, 
+                                    padding: "0 20px", 
+                                    fontWeight: "bold", 
+                                    cursor: "pointer", 
+                                    fontSize: 16,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    boxShadow: "0 2px 5px rgba(0,0,0,0.2)"
+                                }}
                             >
-                                {bidLoading ? "..." : "BID"}
+                                {bidLoading ? "..." : "BID!"}
                             </button>
                         </div>
                         <div style={{fontSize: 11, color: theme.subText, marginLeft: 5}}>*Minimal nambah: {formatGold(auctionData.increment)}</div>
                         
-                        <button 
-                            onClick={() => handleBid("BIN")}
-                            disabled={bidLoading}
-                            style={{
-                                marginTop: 5,
-                                width:"100%", 
-                                background:"linear-gradient(180deg, #B8860B 0%, #8B6508 100%)", 
-                                color:"white", 
-                                border:"1px solid #FFD700", 
-                                padding: "14px", 
-                                borderRadius:8, 
-                                fontWeight:"bold", 
-                                cursor:"pointer",
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                boxShadow: "0 4px 6px rgba(0,0,0,0.3)"
-                            }}
-                        >
-                            <span style={{display:"flex", alignItems:"center", gap:5}}>⚡ BELI LANGSUNG (BIN)</span>
-                            <span style={{background:"rgba(0,0,0,0.3)", padding:"4px 10px", borderRadius:6, fontSize: 14}}>
-                                {auctionData.binPrice ? auctionData.binPrice.toLocaleString('id-ID') : 0} 🪙
-                            </span>
-                        </button>
+                        {/* TOMBOL BIN (HANYA MUNCUL JIKA HARGA BIN > HARGA SEKARANG) */}
+                        {auctionData.binPrice > auctionData.currentBid ? (
+                            <button 
+                                onClick={() => handleBid("BIN")}
+                                disabled={bidLoading}
+                                style={{
+                                    marginTop: 5,
+                                    width:"100%", 
+                                    background:"linear-gradient(180deg, #B8860B 0%, #8B6508 100%)", 
+                                    color:"white", 
+                                    border:"1px solid #FFD700", 
+                                    padding: "14px", 
+                                    borderRadius:8, 
+                                    fontWeight:"bold", 
+                                    cursor:"pointer", 
+                                    display: "flex", 
+                                    justifyContent: "space-between", 
+                                    alignItems: "center",
+                                    boxShadow: "0 4px 6px rgba(0,0,0,0.3)"
+                                }}
+                            >
+                                <span style={{display:"flex", alignItems:"center", gap:5}}>⚡ BELI LANGSUNG (BIN)</span>
+                                <span style={{background:"rgba(0,0,0,0.3)", padding:"4px 10px", borderRadius:6, fontSize: 14}}>
+                                    {auctionData.binPrice.toLocaleString('id-ID')} 🪙
+                                </span>
+                            </button>
+                        ) : (
+                            <div style={{
+                                marginTop: 5, 
+                                padding: 10, 
+                                background: "rgba(255,255,255,0.05)", 
+                                border: "1px dashed #666",
+                                color: "#888", 
+                                borderRadius: 8, 
+                                textAlign: "center", 
+                                fontSize: 12,
+                                fontStyle: "italic"
+                            }}>
+                                🚫 Opsi BIN ditutup (Harga Bid sudah melebihi BIN)
+                            </div>
+                        )}
                         
                         {(!ign || !waNumber) && (
                             <div style={{
