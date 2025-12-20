@@ -206,7 +206,6 @@ export default function Page() {
   };
 
   /* ===== HELPERS ===== */
-  // Format Gold Default (Warna Emas)
   const formatGold = (val) => <span style={{ fontWeight: "bold", color: "#B8860B" }}>{val ? val.toLocaleString('id-ID') : 0} 🪙</span>;
   
   const statusLabel = s => {
@@ -282,7 +281,8 @@ export default function Page() {
   };
 
   const styles = {
-      header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: theme.cardBg, borderBottom: theme.border, position: "sticky", top: 0, zIndex: 100 },
+      // FIX: Header Warna Biru Gelap + Teks Putih
+      header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#1e293b", color: "#fff", borderBottom: theme.border, position: "sticky", top: 0, zIndex: 100 },
       cartIcon: { position: "relative", fontSize: 24, cursor: "pointer" },
       cartBadge: { position: "absolute", top: -5, right: -8, background: "red", color: "white", borderRadius: "50%", width: 18, height: 18, fontSize: 11, display: "flex", justifyContent: "center", alignItems: "center" },
       grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 },
@@ -439,7 +439,27 @@ export default function Page() {
         </div>
         )}
 
-        {/* INPUT DATA USER DIHAPUS DARI SINI, PINDAH KE CART */}
+        {/* FIX: HERO ITEM (HOT ITEMS) DIBALIKIN LAGI */}
+        {heroItems.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <h3 style={{ marginLeft: 8, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+              🔥 Hot Items
+            </h3>
+            <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 10, paddingLeft: 8 }}>
+               {heroItems.map((item, idx) => (
+                 <div key={idx} style={{ minWidth: 140, background: theme.cardBg, border: theme.border, borderRadius: 8, padding: 10, display: "flex", flexDirection: "column", gap: 5 }}>
+                    <div style={{fontWeight: "bold", fontSize: 14, color: "#FFD700", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"}}>{item.nama}</div>
+                    <div style={{fontSize: 11, color: item.status?.toLowerCase() === 'full' ? '#4caf50' : item.status?.toLowerCase() === 'kosong' ? '#f44336' : '#ff9800'}}>{statusLabel(item.status)}</div>
+                    {item.buy > 0 && (
+                       <button onClick={() => addToCart(item, 'buy')} disabled={item.status === 'Kosong'} style={{...styles.btn, fontSize: 11, width: "100%", marginTop: "auto", opacity: item.status === 'Kosong' ? 0.5 : 1}}>
+                           Beli <span style={{color:"white"}}>{(item.buy/1000)}k</span>
+                       </button>
+                    )}
+                 </div>
+               ))}
+            </div>
+          </div>
+        )}
 
         {/* FILTER & SEARCH */}
         <div style={{ display: "flex", gap: 10, marginBottom: 20, overflowX: "auto", paddingBottom: 5 }}>
@@ -457,7 +477,6 @@ export default function Page() {
             <div key={idx} style={styles.card}>
               <div style={{fontWeight: "bold", fontSize: 16, color: "#FFD700"}}>
                   {item.nama}
-                  {/* FIX: MUNCULIN KATEGORI LAGI */}
                   <span style={{fontSize: 10, display:"block", color: theme.subText, fontWeight:"normal"}}>({item.kategori})</span>
               </div>
               <div style={{fontSize: 12, color: item.status?.toLowerCase() === 'full' ? '#4caf50' : item.status?.toLowerCase() === 'kosong' ? '#f44336' : '#ff9800'}}>
@@ -467,7 +486,6 @@ export default function Page() {
               <div style={{marginTop: "auto"}}>
                  {item.buy > 0 && (
                      <button onClick={() => addToCart(item, 'buy')} disabled={item.status === 'Kosong'} style={{...styles.btn, width: "100%", marginBottom: 4, opacity: item.status === 'Kosong' ? 0.5 : 1}}>
-                         {/* FIX: WARNA TEXT HARGA JADI PUTIH BIAR KELIATAN */}
                          Beli <span style={{color: "white", fontWeight: "bold"}}>{item.buy.toLocaleString('id-ID')}</span> 🪙
                      </button>
                  )}
@@ -485,10 +503,10 @@ export default function Page() {
       {/* RENDER MARKET MODAL */}
       {marketOpen && <MarketModal />}
 
-      {/* CART MODAL */}
+      {/* CART MODAL (FIX: LEBAR DIPENDEKIN SESUAI GARIS OREN) */}
       {cartOpen && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", zIndex: 300, display: "flex", justifyContent: "end" }}>
-           <div style={{ width: "85%", maxWidth: 400, background: theme.modalBg, height: "100%", padding: 20, overflowY: "auto", borderLeft: theme.border }}>
+           <div style={{ width: "70%", maxWidth: 320, background: theme.modalBg, height: "100%", padding: 20, overflowY: "auto", borderLeft: theme.border }}>
               <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20}}>
                   <h2>Keranjang</h2>
                   <button onClick={() => setCartOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button>
@@ -508,7 +526,6 @@ export default function Page() {
                   </div>
               ))}
 
-              {/* FIX: INPUT DATA USER PINDAH KESINI */}
               <div style={{marginTop: 20, paddingTop: 20, borderTop: "2px solid #555"}}>
                   <h4 style={{marginBottom: 10}}>Data Pembeli (Wajib Diisi)</h4>
                   <input placeholder="Nickname In-Game (IGN)" value={ign} onChange={(e) => {setIgn(e.target.value); localStorage.setItem("gearShopIGN", e.target.value)}} style={styles.input} />
