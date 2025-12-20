@@ -28,7 +28,7 @@ export default function Page() {
 
   /* ===== STATE CART & USER ===== */
   const [cart, setCart] = useState([]);
-  const [cartOpen, setCartOpen] = useState(false);
+  const [cartOpen, setWaitCartOpen] = useState(false);
   const [ign, setIgn] = useState("");
   const [waNumber, setWaNumber] = useState(""); 
 
@@ -76,56 +76,44 @@ export default function Page() {
     loadData();
   }, []);
 
-  // -- Parser Toko Utama --
   const parseStoreData = (text) => {
     const rows = text.split(/\r?\n/).slice(1);
     const parsed = rows.filter(r => r.trim() !== "").map(r => {
       const c = r.split(",");
       const catRaw = c[0]?.trim() || "Uncategorized";
-      
       if (catRaw.toUpperCase() === "#HERO") {
           return { kategori: "#HERO", nama: c[1]?.trim() || "Unknown", targetKategori: c[2]?.trim(), status: "System" };
       }
-
       return {
-        kategori: catRaw,
-        nama: c[1]?.trim() || "Unknown",
+        kategori: catRaw, nama: c[1]?.trim() || "Unknown",
         buy: parseInt(c[2]?.replace(/\D/g, '')) || 0,
         sell: parseInt(c[3]?.replace(/\D/g, '')) || 0,
-        status: c[4]?.trim() || "Kosong",
-        promo: c[5]?.trim() || null
+        status: c[4]?.trim() || "Kosong", promo: c[5]?.trim() || null
       };
     });
 
     const systemRow = parsed.find(item => item.kategori?.toUpperCase() === "#SYSTEM" && item.nama?.toUpperCase() === "STATUS_TOKO");
     setIsStoreOpen(!(systemRow && systemRow.status?.toUpperCase() === "TUTUP"));
-
     const heroRows = parsed.filter(item => item.kategori === "#HERO");
     const realItems = parsed.filter(item => item.kategori !== "#SYSTEM" && item.kategori !== "#HERO");
-
     const matchedHeroes = [];
     heroRows.forEach(h => {
         const found = realItems.find(item => item.nama.toLowerCase() === h.nama.toLowerCase() && item.kategori.toLowerCase() === h.targetKategori?.toLowerCase());
         if (found) matchedHeroes.push(found);
     });
-    
     setHeroItems(matchedHeroes);
     setItems(realItems);
   };
 
-  // -- Parser Titipan Items --
   const parseTitipanItems = (text) => {
     const rows = text.split(/\r?\n/).slice(1);
     const data = rows.filter(r => r.trim() !== "").map(r => {
         const c = r.split(","); 
-        return {
-            nama: c[0]?.trim(), harga: c[1]?.trim(), owner: c[2]?.trim(), status: c[3]?.trim(), tipeHarga: c[4]?.trim(), img: c[5]?.trim() || null
-        };
+        return { nama: c[0]?.trim(), harga: c[1]?.trim(), owner: c[2]?.trim(), status: c[3]?.trim(), tipeHarga: c[4]?.trim(), img: c[5]?.trim() || null };
     });
     setTitipanItems(data);
   };
 
-  // -- Parser Titipan Accounts --
   const parseTitipanAccounts = (text) => {
     const rows = text.split(/\r?\n/).slice(1);
     const data = rows.filter(r => r.trim() !== "").map(r => {
@@ -139,7 +127,6 @@ export default function Page() {
     setTitipanAccounts(data);
   };
 
-  /* ===== LOAD DATA AUCTION ===== */
   useEffect(() => {
     fetchAuction(); 
     const interval = setInterval(fetchAuction, 5000);
@@ -152,9 +139,8 @@ export default function Page() {
         const end = new Date(auctionData.endTime).getTime();
         const now = new Date().getTime();
         const distance = end - now;
-        if (distance < 0) {
-            setTimeLeft("LELANG DITUTUP");
-        } else {
+        if (distance < 0) { setTimeLeft("LELANG DITUTUP"); } 
+        else {
             const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((distance % (1000 * 60)) / 1000);
@@ -172,46 +158,36 @@ export default function Page() {
     } catch (error) { console.error("Err lelang", error); }
   }
 
-  /* ===== ACTION HANDLERS (UPDATED) ===== */
   const handleBid = async (action) => {
-    // 1. Validasi IGN & WA (Wajib untuk Lelang)
-    if (!ign || !waNumber) {
-        alert("Untuk ikut lelang, WAJIB isi IGN dan Nomor WA di keranjang!");
-        setCartOpen(true);
+    if (!ign || (action === "BID" || action === "BIN" ? !waNumber : false)) {
+        alert("Wajib isi IGN dan No WA dulu di keranjang untuk ikut Lelang!");
+        setWaitCartOpen(true);
         return;
     }
-
     const amount = action === "BIN" ? auctionData.binPrice : parseInt(bidAmount);
-
-    // 2. Logic BIN Padam jika Bid > BIN
-    if (action === "BIN" && auctionData.currentBid >= auctionData.binPrice) {
-        alert("Maaf bang, harga Bid sudah melewati harga BIN. Silahkan Bid manual.");
-        return;
+    if (action === "BID") {
+        if (!amount || amount <= auctionData.currentBid) {
+            alert(`Bid harus lebih tinggi dari ${auctionData.currentBid.toLocaleString()}`);
+            return;
+        }
+        // Anti-Rusuh: Cek kenaikan wajar (misal tidak boleh loncat lebih dari 5x lipat bid sekarang)
+        if (amount > (auctionData.currentBid * 5) && auctionData.currentBid > 0) {
+            alert("Bid tidak wajar (terlalu tinggi)! Masukkan nominal yang masuk akal.");
+            return;
+        }
     }
-
-    // 3. Logic Bid Dasar
-    if (action === "BID" && (!amount || amount <= auctionData.currentBid)) {
-        alert(`Bid harus lebih tinggi dari ${formatGold(auctionData.currentBid + auctionData.increment)}`);
-        return;
-    }
-
-    // 4. Anti-Troll Logic (Max Jump 2x lipat)
-    if (action === "BID" && amount > (auctionData.currentBid * 2)) {
-         if(!confirm(`Yakin bid ${formatGold(amount)}? Ini jauh banget dari bid sekarang lho.`)) return;
-    }
-
-    if (!confirm(`Yakin mau ${action} seharga ${amount}?`)) return;
-    
+    if (!confirm(`Yakin mau ${action} seharga ${amount.toLocaleString()}?`)) return;
     setBidLoading(true);
     try {
         await fetch(AUCTION_API, {
             method: "POST",
-            body: JSON.stringify({ action, bid: amount, ign, wa: waNumber }),
-            headers: { "Content-Type": "text/plain" }
+            mode: 'no-cors',
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action, bid: amount, ign, wa: waNumber })
         });
         setBidAmount("");
-        setTimeout(fetchAuction, 1500); 
-        alert("Permintaan dikirim!");
+        setTimeout(fetchAuction, 2000); 
+        alert("Bid Terkirim! Mohon tunggu update data.");
     } catch (error) { alert("Gagal kirim bid."); } 
     finally { setBidLoading(false); }
   };
@@ -222,9 +198,7 @@ export default function Page() {
     localStorage.setItem("gearShopTheme", newMode ? "dark" : "light");
   };
 
-  /* ===== HELPERS ===== */
   const formatGold = (val) => <span style={{ fontWeight: "bold", color: "#B8860B" }}>{val ? val.toLocaleString('id-ID') : 0} 🪙</span>;
-  
   const statusLabel = s => {
     const v = s?.toLowerCase();
     if (v === "full") return "🟢 Full";
@@ -234,243 +208,162 @@ export default function Page() {
     return s;
   };
 
-  /* ===== CART LOGIC ===== */
   const addToCart = (item, mode) => {
     if (item.status?.toLowerCase() === "kosong") return;
     const key = `${item.nama}-${mode}`;
     const exist = cart.find(c => c.key === key);
-    if (exist) {
-      setCart(cart.map(c => c.key === key ? { ...c, qty: c.qty + 1 } : c));
-    } else {
-      setCart([...cart, { ...item, mode, qty: 1, key }]);
-    }
-    setCartOpen(true);
+    if (exist) { setCart(cart.map(c => c.key === key ? { ...c, qty: c.qty + 1 } : c)); } 
+    else { setCart([...cart, { ...item, mode, qty: 1, key }]); }
+    setWaitCartOpen(true);
   };
-  const updateQty = (item, qty) => {
-    if (qty < 1) return;
-    setCart(cart.map(c => c.key === item.key ? { ...c, qty } : c));
-  };
+  const updateQty = (item, qty) => { if (qty < 1) return; setCart(cart.map(c => c.key === item.key ? { ...c, qty } : c)); };
   const removeFromCart = item => setCart(cart.filter(c => c.key !== item.key));
-  
-  const totalQty = cart.reduce((s, c) => s + c.qty, 0);
   const totalPrice = cart.reduce((s, c) => s + (c.mode === "buy" ? c.buy : c.sell) * c.qty, 0);
 
-  // FIX: Checkout WA (Cuma Wajib IGN, No WA gak dikirim)
   const sendWA = () => {
     if (!cart.length) return;
-    if (!ign) {
-        alert("Mohon isi IGN (Nickname Game) dulu ya!");
-        return;
-    }
-    const itemText = cart.map(c => `${c.nama} (${c.mode}) x${c.qty} = ${(c.mode === 'buy' ? c.buy : c.sell) * c.qty}`).join("%0A");
+    if (!ign) { alert("Wajib isi IGN!"); return; }
+    const itemText = cart.map(c => `${c.nama} (${c.mode}) x${c.qty}`).join("%0A");
     const message = `Halo,%20saya%20*${encodeURIComponent(ign)}*%20mau%20order:%0A${itemText}%0A%0ATotal:%20${totalPrice.toLocaleString('id-ID')}%20Gold`;
     window.open(`https://wa.me/6283101456267?text=${message}`, "_blank");
   };
 
-  const contactAdmin = () => window.open("https://wa.me/6283101456267?text=Halo%20Admin,%20mau%20tanya-tanya%20dong.", "_blank");
+  const contactAdmin = () => window.open("https://wa.me/6283101456267?text=Halo%20Admin", "_blank");
   const contactOwner = (item, type) => {
-    const text = type === 'account' 
-       ? `Halo Admin, saya minat akun titipan: *${item.nama}* (Owner: ${item.owner}) seharga ${item.harga}. Status: ${item.status}`
-       : `Halo Admin, saya minat barang titipan: *${item.nama}* (Owner: ${item.owner}) seharga ${item.harga}.`;
+    const text = type === 'account' ? `Halo Admin, minat akun: *${item.nama}*` : `Halo Admin, minat item: *${item.nama}*`;
     window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
   };
   const titipJualWA = (type) => {
-      let text = type === 'item' 
-        ? "Halo Admin, mau titip jual ITEM.\n\nNama Item:\nHarga:\nNego/Fix:\nScreenshot:"
-        : "Halo Admin, mau titip jual AKUN.\n\nNama/Job:\nLevel:\nStat Melee/Dist/Mag/Def:\nInfo Set:\nHarga:\nNego/Fix:\nWajib MM:\nScreenshot Char:";
+      let text = type === 'item' ? "Halo Admin, mau titip ITEM" : "Halo Admin, mau titip AKUN";
       window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
   };
 
-  /* ===== FILTERING ===== */
   const categories = ["All", ...new Set(items.map(i => i.kategori))];
-  const filteredItems = items.filter(i => {
-      return (i.nama.toLowerCase().includes(search.toLowerCase())) && (category === "All" || i.kategori === category);
-    }).sort((a, b) => sort === "buy-asc" ? a.buy - b.buy : sort === "buy-desc" ? b.buy - a.buy : 0);
+  const filteredItems = items.filter(i => (i.nama.toLowerCase().includes(search.toLowerCase())) && (category === "All" || i.kategori === category));
 
-  /* ===== STYLES ===== */
   const theme = {
-    bg: darkMode ? "#121212" : "#f5f5f5",
-    text: darkMode ? "#e0e0e0" : "#333",
-    cardBg: darkMode ? "#1e1e1e" : "#fff",
-    border: darkMode ? "1px solid #333" : "1px solid #ddd",
-    modalBg: darkMode ? "#222" : "#fff",
-    accent: "#B8860B",
-    inputBg: darkMode ? "#2c2c2c" : "#fff",
-    subText: darkMode ? "#aaa" : "#666",
+    bg: darkMode ? "#121212" : "#f5f5f5", text: darkMode ? "#e0e0e0" : "#333", cardBg: darkMode ? "#1e1e1e" : "#fff",
+    border: darkMode ? "1px solid #333" : "1px solid #ddd", modalBg: darkMode ? "#222" : "#fff", accent: "#B8860B",
+    inputBg: darkMode ? "#2c2c2c" : "#fff", subText: darkMode ? "#aaa" : "#666",
     auctionBg: darkMode ? "linear-gradient(135deg, #2c0000 0%, #4a0000 100%)" : "linear-gradient(135deg, #fff0f0 0%, #ffe0e0 100%)",
   };
 
   const styles = {
       header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#1e293b", color: "#fff", borderBottom: theme.border, position: "sticky", top: 0, zIndex: 100 },
-      cartIcon: { position: "relative", fontSize: 24, cursor: "pointer" },
-      cartBadge: { position: "absolute", top: -5, right: -8, background: "red", color: "white", borderRadius: "50%", width: 18, height: 18, fontSize: 11, display: "flex", justifyContent: "center", alignItems: "center" },
       grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 },
       card: { background: theme.cardBg, border: theme.border, borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 6 },
       input: { width: "100%", padding: 10, borderRadius: 6, border: theme.border, background: theme.inputBg, color: theme.text, marginBottom: 10, outline: "none" },
       btn: { background: theme.accent, color: "#fff", border: "none", padding: "8px", borderRadius: 4, cursor: "pointer", fontWeight: "bold" },
       modalOverlay: { position: "fixed", top:0, left:0, right:0, bottom:0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", justifyContent: "center", alignItems: "end" }, 
-      modalContent: { background: theme.modalBg, width: "100%", height: "90vh", borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, overflowY: "auto", position: "relative" },
-      tabContainer: { display: "flex", gap: 10, marginBottom: 20, borderBottom: theme.border, paddingBottom: 10 },
-      tabBtn: (active) => ({ flex: 1, padding: 10, borderRadius: 8, background: active ? theme.accent : "transparent", color: active ? "#fff" : theme.text, border: active ? "none" : theme.border, cursor: "pointer", fontWeight: "bold", textAlign: "center" }),
-      fab: { position: "fixed", bottom: 30, right: 30, background: "#25D366", color: "white", width: 56, height: 56, borderRadius: "50%", display: "flex", justifyContent: "center", alignItems: "center", fontSize: 30, boxShadow: "0 4px 10px rgba(0,0,0,0.3)", cursor: "pointer", zIndex: 201 },
-      fabMenu: { position: "fixed", bottom: 95, right: 30, display: "flex", flexDirection: "column", gap: 10, zIndex: 201 }
+      modalContent: { background: theme.modalBg, width: "100%", height: "90vh", borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, overflowY: "auto" },
+      fab: { position: "fixed", bottom: 30, right: 30, background: "#25D366", color: "white", width: 56, height: 56, borderRadius: "50%", display: "flex", justifyContent: "center", alignItems: "center", fontSize: 30, zIndex: 201 },
   };
 
-  /* ===== MARKET MODAL ===== */
   const MarketModal = () => (
-      <div style={styles.modalOverlay}>
+      <div style={styles.modalOverlay} onClick={(e) => e.target === e.currentTarget && setMarketOpen(false)}>
           <div style={styles.modalContent}>
               <div style={{display:"flex", justifyContent:"space-between", marginBottom: 20}}>
                   <h2 style={{margin:0}}>🏪 Pasar Warga</h2>
                   <button onClick={()=>setMarketOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button>
               </div>
-              <div style={styles.tabContainer}>
-                  <button style={styles.tabBtn(marketTab === 'items')} onClick={()=>setMarketTab('items')}>⚔️ ITEM</button>
-                  <button style={styles.tabBtn(marketTab === 'accounts')} onClick={()=>setMarketTab('accounts')}>👤 AKUN</button>
+              <div style={{display:"flex", gap:10, marginBottom:20}}>
+                  <button onClick={()=>setMarketTab('items')} style={{flex:1, padding:10, borderRadius:8, background: marketTab==='items'?theme.accent:'transparent', color: marketTab==='items'?'#fff':theme.text, border:theme.border}}>⚔️ ITEM</button>
+                  <button onClick={()=>setMarketTab('accounts')} style={{flex:1, padding:10, borderRadius:8, background: marketTab==='accounts'?theme.accent:'transparent', color: marketTab==='accounts'?'#fff':theme.text, border:theme.border}}>👤 AKUN</button>
               </div>
-              <div style={marketTab === 'items' ? styles.grid : {...styles.grid, gridTemplateColumns: "1fr"}}>
-                  {marketTab === 'items' && titipanItems.map((item, idx) => (
-                      <div key={idx} style={{...styles.card, position: "relative", opacity: item.status?.toLowerCase() === 'sold' ? 0.6 : 1}}>
-                          {item.status?.toLowerCase() === 'sold' && <div style={{position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", color:"red", fontWeight:"bold", fontSize:20, zIndex:2}}>SOLD</div>}
-                          <div style={{height: 100, background: "#333", borderRadius: 4, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden"}}>
-                              {item.img ? <img src={item.img} alt={item.nama} style={{width:"100%", height:"100%", objectFit:"cover"}}/> : <span style={{fontSize:40}}>📦</span>}
-                          </div>
-                          <div style={{fontWeight:"bold", color: "#FFD700", fontSize: 14}}>{item.nama}</div>
-                          <div style={{fontSize: 12, color: theme.text}}>By: {item.owner}</div>
-                          <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 4}}>
-                              <span style={{color: "#4caf50", fontWeight:"bold"}}>{item.harga}</span>
-                              <span style={{fontSize: 10, padding: "2px 6px", borderRadius: 4, background: item.tipeHarga === 'Nego' ? '#FFA500' : '#2196F3', color:'white'}}>{item.tipeHarga}</span>
-                          </div>
-                          <button onClick={()=>contactOwner(item, 'item')} style={{...styles.btn, marginTop:8, fontSize: 12}}>💬 Chat Owner</button>
-                      </div>
-                  ))}
-                  {marketTab === 'accounts' && titipanAccounts.map((acc, idx) => (
-                      <div key={idx} style={{...styles.card, flexDirection: "row", gap: 12, alignItems: "center"}}>
-                          <div style={{width: 80, height: 80, background: "#333", borderRadius: "50%", overflow:"hidden", flexShrink: 0}}>
-                              {acc.img ? <img src={acc.img} alt={acc.nama} style={{width:"100%", height:"100%", objectFit:"cover"}}/> : <div style={{width:"100%",height:"100%", display:"flex",alignItems:"center",justifyContent:"center", fontSize:30}}>👤</div>}
-                          </div>
-                          <div style={{flex: 1}}>
-                              <div style={{display:"flex", justifyContent:"space-between"}}>
-                                  <div style={{fontWeight:"bold", fontSize: 16, color: "#FFD700"}}>{acc.nama} <span style={{fontSize:12, color:"#aaa"}}>Lv.{acc.level}</span></div>
-                                  {acc.wajibMM?.toLowerCase() === 'ya' && <div style={{fontSize: 10, background: "red", color:"white", padding: "2px 6px", borderRadius: 4, height:"fit-content"}}>🛡️ WAJIB MM</div>}
-                              </div>
-                              <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap: 4, fontSize: 11, margin: "8px 0", color: "#ccc", background:"rgba(255,255,255,0.05)", padding: 6, borderRadius: 4}}>
-                                  <div>⚔️ {acc.melee} | 🏹 {acc.dist}</div>
-                                  <div>✨ {acc.magic} | 🛡️ {acc.def}</div>
-                              </div>
-                              <div style={{fontSize: 11, marginBottom: 4, color: "#aaa"}}>Set: {acc.setInfo}</div>
-                              <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 4}}>
-                                  <div>
-                                      <div style={{fontSize:10, color:"#aaa"}}>Owner: {acc.owner}</div>
-                                      <div style={{color: "#4caf50", fontWeight:"bold", fontSize: 14}}>{acc.harga}</div>
-                                  </div>
-                                  <button onClick={()=>contactOwner(acc, 'account')} style={{...styles.btn, fontSize: 12, background: "#333", border: "1px solid #555"}}>💬 Nego</button>
-                              </div>
-                          </div>
-                      </div>
-                  ))}
-
-                  {/* FIX: TAMPILAN KOSONG */}
-                  {marketTab === 'items' && titipanItems.length === 0 && (
-                      <div style={{textAlign: "center", color: theme.subText, marginTop: 40, width: "100%", gridColumn: "1 / -1"}}>
-                        <div style={{fontSize: 40}}>🤷‍♂️</div>
-                        <p>Belum ada barang titipan saat ini.</p>
-                      </div>
-                  )}
-                  {marketTab === 'accounts' && titipanAccounts.length === 0 && (
-                      <div style={{textAlign: "center", color: theme.subText, marginTop: 40, width: "100%", gridColumn: "1 / -1"}}>
-                        <div style={{fontSize: 40}}>🕵️</div>
-                        <p>Belum ada akun titipan saat ini.</p>
-                      </div>
+              <div style={marketTab === 'items' ? styles.grid : {display:"grid", gridTemplateColumns:"1fr", gap:12}}>
+                  {marketTab === 'items' ? (
+                      titipanItems.length > 0 ? titipanItems.map((item, idx) => (
+                        <div key={idx} style={styles.card}>
+                            <div style={{fontWeight:"bold", color:"#FFD700"}}>{item.nama}</div>
+                            <div style={{fontSize:12}}>By: {item.owner} | {item.harga}</div>
+                            <button onClick={()=>contactOwner(item, 'item')} style={{...styles.btn, marginTop:8}}>Nego</button>
+                        </div>
+                      )) : <div style={{textAlign:"center", color:theme.subText, gridColumn:"1/-1", padding:40}}>Belum ada barang titipan saat ini 🤷‍♂️</div>
+                  ) : (
+                      titipanAccounts.length > 0 ? titipanAccounts.map((acc, idx) => (
+                        <div key={idx} style={{...styles.card, flexDirection:"row", gap:12}}>
+                            <div style={{flex:1}}>
+                                <div style={{fontWeight:"bold", color:"#FFD700"}}>{acc.nama} (Lv.{acc.level})</div>
+                                <div style={{fontSize:11, color:theme.subText}}>MM: {acc.wajibMM} | Set: {acc.setInfo}</div>
+                                <div style={{fontSize:12, fontWeight:"bold", marginTop:4}}>{acc.harga} ({acc.tipeHarga})</div>
+                                <button onClick={()=>contactOwner(acc, 'account')} style={{...styles.btn, marginTop:8, width:"100%"}}>Nego Akun</button>
+                            </div>
+                        </div>
+                      )) : <div style={{textAlign:"center", color:theme.subText, padding:40}}>Belum ada akun titipan saat ini 🕵️</div>
                   )}
               </div>
               <div style={styles.fab} onClick={() => setTitipMenuOpen(!titipMenuOpen)}>{titipMenuOpen ? "✕" : "+"}</div>
               {titipMenuOpen && (
-                  <div style={styles.fabMenu}>
-                      <button onClick={()=>titipJualWA('account')} style={{padding: "10px 20px", borderRadius: 20, border:"none", background: "#fff", color:"#333", fontWeight:"bold", boxShadow:"0 4px 10px rgba(0,0,0,0.3)", display:"flex", alignItems:"center", gap: 8}}>👤 Titip Akun</button>
-                      <button onClick={()=>titipJualWA('item')} style={{padding: "10px 20px", borderRadius: 20, border:"none", background: "#fff", color:"#333", fontWeight:"bold", boxShadow:"0 4px 10px rgba(0,0,0,0.3)", display:"flex", alignItems:"center", gap: 8}}>⚔️ Titip Item</button>
+                  <div style={{position:"fixed", bottom:95, right:30, display:"flex", flexDirection:"column", gap:10, zIndex:201}}>
+                      <button onClick={()=>titipJualWA('account')} style={{padding:"10px 20px", borderRadius:20, border:"none", background:"#fff", fontWeight:"bold", boxShadow:"0 4px 10px rgba(0,0,0,0.3)"}}>👤 Titip Akun</button>
+                      <button onClick={()=>titipJualWA('item')} style={{padding:"10px 20px", borderRadius:20, border:"none", background:"#fff", fontWeight:"bold", boxShadow:"0 4px 10px rgba(0,0,0,0.3)"}}>⚔️ Titip Item</button>
                   </div>
               )}
           </div>
       </div>
   );
 
-  /* ===== MAIN RENDER ===== */
   if (!loading && !isStoreOpen) {
     return (
-      <div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, fontFamily: "sans-serif", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20, textAlign: "center" }}>
-        <img src="/logo.png" height={60} alt="Logo" style={{marginBottom: 20}} />
-        <h2 style={{color: "#FF4444", fontSize: 28, marginBottom: 10}}>🔴 TOKO TUTUP</h2>
-        <p style={{color: theme.subText, maxWidth: 300, marginBottom: 30}}>Maaf ya, admin lagi istirahat. Cek lagi nanti ya!</p>
-        <button onClick={contactAdmin} style={{ background: "#25D366", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 50, fontSize: 16, fontWeight: "bold", cursor: "pointer" }}>
-          <span>💬 Chat WhatsApp Admin</span>
-        </button>
+      <div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20, textAlign: "center" }}>
+        <h2 style={{color: "#FF4444"}}>🔴 TOKO TUTUP</h2>
+        <button onClick={contactAdmin} style={{ background: "#25D366", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 50, fontWeight: "bold", marginTop:20 }}>Chat Admin</button>
       </div>
     );
   }
 
   return (
     <div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, fontFamily: "sans-serif", paddingBottom: 80 }}>
-      
-      {/* HEADER */}
       <header style={styles.header}>
-        <div style={{display:"flex", alignItems:"center", gap: 10}}>
-            <img src="/logo.png" height={36} alt="Logo" />
-        </div>
-        <div style={{display:"flex", alignItems:"center", gap: 15}}>
+        <img src="/logo.png" height={36} alt="Logo" />
+        <div style={{display:"flex", gap: 15, alignItems:"center"}}>
             <div style={{cursor:"pointer", fontSize: 22}} onClick={() => setMarketOpen(true)}>🏪</div>
             <div style={{cursor:"pointer", fontSize: 20}} onClick={toggleTheme}>{darkMode ? "☀️" : "🌙"}</div>
-            <div style={styles.cartIcon} onClick={() => setCartOpen(true)}>
-                🛒
-                {cart.length > 0 && <span style={styles.cartBadge}>{totalQty}</span>}
+            <div style={{position:"relative", fontSize:24, cursor:"pointer"}} onClick={() => setWaitCartOpen(true)}>🛒
+                {cart.length > 0 && <span style={{position:"absolute", top:-5, right:-8, background:"red", color:"white", borderRadius:"50%", width:18, height:18, fontSize:11, display:"flex", justifyContent:"center", alignItems:"center"}}>{cart.length}</span>}
             </div>
         </div>
       </header>
 
       <main style={{ padding: 16 }}>
-        
-        {/* LELANG SECTION */}
         {auctionData && auctionData.status !== "empty" && (
-        <div style={{ marginBottom: 24, borderRadius: 12, overflow: "hidden", boxShadow: "0 4px 20px rgba(255, 68, 68, 0.5)", border: "2px solid #FF4444", background: theme.auctionBg, transition: "all 0.3s ease" }}>
-            <div onClick={() => setIsAuctionExpanded(!isAuctionExpanded)} style={{ padding: "12px 16px", background: "linear-gradient(90deg, #880000 0%, #aa0000 100%)", color: "white", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{display:"flex", alignItems:"center", gap: 12}}>
-                  <div style={{fontSize: 20}}>🔨</div>
-                  <div>
-                    <div style={{fontSize: 11, opacity: 0.8, fontWeight:"bold", textTransform:"uppercase"}}>Live Auction {isAuctionExpanded ? "▼" : "▶"}</div>
-                    {!isAuctionExpanded && <div style={{fontSize: 15, fontWeight: "bold", color: "#FFD700"}}>{auctionData.item}</div>}
-                  </div>
-              </div>
-              <div style={{textAlign: "right"}}>
-                  <div style={{fontSize: 14, fontWeight: "bold", fontFamily: "monospace", color: "#fff"}}>{timeLeft}</div>
-              </div>
+        <div style={{ marginBottom: 24, borderRadius: 12, overflow: "hidden", border: "2px solid #FF4444", background: theme.auctionBg }}>
+            <div onClick={() => setIsAuctionExpanded(!isAuctionExpanded)} style={{ padding: "12px 16px", background: "#aa0000", color: "white", cursor: "pointer", display: "flex", justifyContent: "space-between" }}>
+              <span>🔨 Live Auction {isAuctionExpanded ? "▼" : "▶"}</span>
+              <span style={{fontFamily:"monospace"}}>{timeLeft}</span>
             </div>
-
             {isAuctionExpanded && (
             <div style={{ padding: 16, textAlign:"center" }}>
-                <strong style={{fontSize: 22, display:"block", marginBottom: 5, color: theme.text}}>{auctionData.item}</strong>
-                <div style={{fontSize: 32, fontWeight:"bold", color: "#25D366", textShadow: "0 0 15px rgba(37, 211, 102, 0.4)", margin: "5px 0"}}>{formatGold(auctionData.currentBid)}</div>
-                
+                <strong style={{fontSize: 22}}>{auctionData.item}</strong>
+                <div style={{fontSize: 32, fontWeight:"bold", color: "#25D366", margin: "10px 0"}}>{formatGold(auctionData.currentBid)}</div>
                 {auctionData.leaderboard && (
-                    <div style={{ marginTop: 15, background: "rgba(0,0,0,0.3)", borderRadius: 12, padding: "12px", textAlign: "left", border: "1px solid rgba(255,255,255,0.1)" }}>
+                    <div style={{ background: "rgba(0,0,0,0.3)", borderRadius: 8, padding: 10, textAlign: "left", marginBottom: 15 }}>
                         {auctionData.leaderboard.slice(0,3).map((l, i) => (
-                            <div key={i} style={{display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom: "1px solid rgba(255,255,255,0.1)"}}>
-                                <span style={{color: i===0?"#FFD700":i===1?"#C0C0C0":"#CD7F32", fontWeight:"bold"}}>{i===0?"🥇":i===1?"🥈":"🥉"} {l.name}</span>
-                                <span style={{color:"#25D366"}}>{formatGold(l.bid)}</span>
+                            <div key={i} style={{display:"flex", justifyContent:"space-between", padding:"4px 0", borderBottom: "1px solid rgba(255,255,255,0.1)"}}>
+                                <span>{i===0?"🥇":i===1?"🥈":"🥉"} {l.name}</span>
+                                <span style={{color:"#25D366"}}>{l.bid.toLocaleString()} 🪙</span>
                             </div>
                         ))}
                     </div>
                 )}
-
                 {!auctionData.isEnded && (
-                    <div style={{display:"flex", gap: 8, marginTop: 20}}>
-                        <input type="number" placeholder="Nominal Bid..." value={bidAmount} onChange={e => setBidAmount(e.target.value)} style={{...styles.input, flex: 1, marginBottom: 0}} />
-                        <button onClick={() => handleBid("BID")} disabled={bidLoading} style={{background: "#FF4444", color: "white", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold"}}>BID</button>
-                        {/* Logic Button BIN */}
-                        {auctionData.currentBid < auctionData.binPrice ? (
-                            <button onClick={() => handleBid("BIN")} disabled={bidLoading} style={{background: "#FFD700", color: "#000", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold"}}>BIN</button>
-                        ) : (
-                            <button disabled style={{background: "#555", color: "#ccc", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold", cursor: "not-allowed"}}>BIN CLOSED</button>
-                        )}
+                    <div style={{display:"flex", flexDirection:"column", gap:10}}>
+                        <div style={{display:"flex", gap:8}}>
+                            <input type="number" placeholder="Nominal Bid..." value={bidAmount} onChange={e => setBidAmount(e.target.value)} style={{...styles.input, flex:1, marginBottom:0}} />
+                            <button onClick={() => handleBid("BID")} disabled={bidLoading} style={{...styles.btn, padding:"0 20px"}}>BID</button>
+                        </div>
+                        {/* Tampilan BIN di bawah BID */}
+                        <div style={{borderTop:"1px solid rgba(255,255,255,0.1)", paddingTop:10}}>
+                           {auctionData.currentBid < auctionData.binPrice ? (
+                               <button onClick={() => handleBid("BIN")} disabled={bidLoading} style={{...styles.btn, width:"100%", background:"#FFD700", color:"#000"}}>
+                                   ⚡ BUY IT NOW (BIN): {auctionData.binPrice.toLocaleString()} 🪙
+                               </button>
+                           ) : (
+                               <button disabled style={{...styles.btn, width:"100%", background:"#555", color:"#ccc", cursor:"not-allowed"}}>
+                                   ❌ BIN CLOSED (Bid reached limit)
+                               </button>
+                           )}
+                        </div>
                     </div>
                 )}
             </div>
@@ -478,116 +371,71 @@ export default function Page() {
         </div>
         )}
 
-        {/* FIX: HERO ITEM (HOT ITEMS) DIBALIKIN + KATEGORI */}
         {heroItems.length > 0 && (
           <div style={{ marginBottom: 20 }}>
-            <h3 style={{ marginLeft: 8, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
-              🔥 Hot Items
-            </h3>
-            <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 10, paddingLeft: 8 }}>
+            <h3 style={{ marginLeft: 8 }}>🔥 Hot Items</h3>
+            <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 10 }}>
                {heroItems.map((item, idx) => (
-                 <div key={idx} style={{ minWidth: 140, background: theme.cardBg, border: theme.border, borderRadius: 8, padding: 10, display: "flex", flexDirection: "column", gap: 5 }}>
-                    <div style={{fontWeight: "bold", fontSize: 14, color: "#FFD700", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"}}>{item.nama}</div>
-                    {/* Munculin Kategori Kecil */}
-                    <div style={{fontSize: 10, color: theme.subText, marginTop: -3}}>({item.targetKategori || item.kategori})</div>
-                    <div style={{fontSize: 11, color: item.status?.toLowerCase() === 'full' ? '#4caf50' : item.status?.toLowerCase() === 'kosong' ? '#f44336' : '#ff9800'}}>{statusLabel(item.status)}</div>
-                    {item.buy > 0 && (
-                       <button onClick={() => addToCart(item, 'buy')} disabled={item.status === 'Kosong'} style={{...styles.btn, fontSize: 11, width: "100%", marginTop: "auto", opacity: item.status === 'Kosong' ? 0.5 : 1}}>
-                           Beli <span style={{color:"white"}}>{(item.buy/1000)}k</span>
-                       </button>
-                    )}
+                 <div key={idx} style={{ minWidth: 140, background: theme.cardBg, border: theme.border, borderRadius: 8, padding: 10 }}>
+                    <div style={{fontWeight: "bold", color: "#FFD700"}}>{item.nama}</div>
+                    <div style={{fontSize:10, color:theme.subText}}>({item.targetKategori})</div>
+                    <div style={{fontSize: 11, margin:"4px 0"}}>{statusLabel(item.status)}</div>
+                    <button onClick={() => addToCart(item, 'buy')} disabled={item.status === 'Kosong'} style={{...styles.btn, width:"100%", fontSize:11}}>Beli {(item.buy/1000)}k</button>
                  </div>
                ))}
             </div>
           </div>
         )}
 
-        {/* FILTER & SEARCH */}
-        <div style={{ display: "flex", gap: 10, marginBottom: 20, overflowX: "auto", paddingBottom: 5 }}>
-          {categories.map(c => (
-            <button key={c} onClick={() => setCategory(c)} style={{ padding: "8px 16px", borderRadius: 20, border: "none", background: category === c ? theme.accent : theme.cardBg, color: category === c ? "#fff" : theme.text, whiteSpace: "nowrap", cursor: "pointer", border: category === c ? "none" : theme.border }}>
-              {c}
-            </button>
-          ))}
-        </div>
         <input placeholder="Cari item..." value={search} onChange={e => setSearch(e.target.value)} style={styles.input} />
 
-        {/* LIST ITEM TOKO */}
         <div style={styles.grid}>
           {filteredItems.map((item, idx) => (
             <div key={idx} style={styles.card}>
-              <div style={{fontWeight: "bold", fontSize: 16, color: "#FFD700"}}>
-                  {item.nama}
-                  <span style={{fontSize: 10, display:"block", color: theme.subText, fontWeight:"normal"}}>({item.kategori})</span>
-              </div>
-              <div style={{fontSize: 12, color: item.status?.toLowerCase() === 'full' ? '#4caf50' : item.status?.toLowerCase() === 'kosong' ? '#f44336' : '#ff9800'}}>
-                  {statusLabel(item.status)}
-              </div>
-              
-              <div style={{marginTop: "auto"}}>
-                 {item.buy > 0 && (
-                     <button onClick={() => addToCart(item, 'buy')} disabled={item.status === 'Kosong'} style={{...styles.btn, width: "100%", marginBottom: 4, opacity: item.status === 'Kosong' ? 0.5 : 1}}>
-                         Beli <span style={{color: "white", fontWeight: "bold"}}>{item.buy.toLocaleString('id-ID')}</span> 🪙
-                     </button>
-                 )}
-                 {item.sell > 0 && (
-                     <button onClick={() => addToCart(item, 'sell')} style={{...styles.btn, width: "100%", background: "#333", border: "1px solid #555"}}>
-                         Jual {formatGold(item.sell)}
-                     </button>
-                 )}
+              <div style={{fontWeight: "bold", color: "#FFD700"}}>{item.nama} <span style={{fontSize:10, color:theme.subText, fontWeight:"normal"}}>({item.kategori})</span></div>
+              <div style={{fontSize: 12}}>{statusLabel(item.status)}</div>
+              <div style={{marginTop: "auto", display:"flex", flexDirection:"column", gap:4}}>
+                 {item.buy > 0 && <button onClick={() => addToCart(item, 'buy')} disabled={item.status === 'Kosong'} style={styles.btn}>Beli {item.buy.toLocaleString()}</button>}
+                 {item.sell > 0 && <button onClick={() => addToCart(item, 'sell')} style={{...styles.btn, background: "#333"}}>Jual {item.sell.toLocaleString()}</button>}
               </div>
             </div>
           ))}
         </div>
       </main>
 
-      {/* RENDER MARKET MODAL */}
       {marketOpen && <MarketModal />}
 
-      {/* CART MODAL (FIX: KLIK LUAR UNTUK CLOSE) */}
       {cartOpen && (
-        <div 
-            onClick={(e) => { if (e.target === e.currentTarget) setCartOpen(false); }}
-            style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", zIndex: 300, display: "flex", justifyContent: "end" }}
-        >
-           <div style={{ width: "70%", maxWidth: 320, background: theme.modalBg, height: "100%", padding: 20, overflowY: "auto", borderLeft: theme.border, cursor: "default" }}>
+        <div style={styles.modalOverlay} onClick={(e) => e.target === e.currentTarget && setWaitCartOpen(false)}>
+           <div style={{ ...styles.modalContent, width: "70%", maxWidth: 320, cursor: "default" }} onClick={(e)=>e.stopPropagation()}>
               <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20}}>
-                  <h2>Keranjang</h2>
-                  <button onClick={() => setCartOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button>
+                  <h2 style={{margin:0}}>Keranjang</h2>
+                  <button onClick={() => setWaitCartOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button>
               </div>
-              
               {cart.map(c => (
-                  <div key={c.key} style={{marginBottom: 15, paddingBottom: 15, borderBottom: "1px solid #333"}}>
+                  <div key={c.key} style={{marginBottom: 15, borderBottom: "1px solid #333", paddingBottom:10}}>
                       <div style={{fontWeight:"bold"}}>{c.nama} ({c.mode})</div>
                       <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 8}}>
                           <div>{formatGold(c.mode === 'buy' ? c.buy : c.sell)} x {c.qty}</div>
                           <div style={{display:"flex", gap: 10}}>
                               <button onClick={() => updateQty(c, c.qty - 1)}>-</button>
                               <button onClick={() => updateQty(c, c.qty + 1)}>+</button>
-                              <button onClick={() => removeFromCart(c)} style={{background:"red", color:"white", border:"none", borderRadius:4}}>Hapus</button>
+                              <button onClick={() => removeFromCart(c)} style={{background:"red", border:"none", borderRadius:4, color:"#fff", padding:"2px 8px"}}>X</button>
                           </div>
                       </div>
                   </div>
               ))}
-
-              <div style={{marginTop: 20, paddingTop: 20, borderTop: "2px solid #555"}}>
-                  {/* FIX: IGN WAJIB, WA OPTIONAL UTK CART */}
-                  <h4 style={{marginBottom: 10}}>Data Pembeli</h4>
-                  <input placeholder="Nickname In-Game (IGN) *" value={ign} onChange={(e) => {setIgn(e.target.value); localStorage.setItem("gearShopIGN", e.target.value)}} style={styles.input} />
-                  <input placeholder="Nomor WhatsApp (Optional)" type="tel" value={waNumber} onChange={(e) => {setWaNumber(e.target.value); localStorage.setItem("gearShopWA", e.target.value)}} style={styles.input} />
-                  
-                  <div style={{display:"flex", justifyContent:"space-between", fontSize: 18, fontWeight:"bold", marginTop: 10}}>
-                      <span>Total:</span>
-                      <span>{formatGold(totalPrice)}</span>
+              <div style={{marginTop: 20}}>
+                  <input placeholder="Nickname Game (IGN) *" value={ign} onChange={(e) => {setIgn(e.target.value); localStorage.setItem("gearShopIGN", e.target.value)}} style={styles.input} />
+                  <input placeholder="Nomor WA (Hanya untuk Lelang)" type="tel" value={waNumber} onChange={(e) => {setWaNumber(e.target.value); localStorage.setItem("gearShopWA", e.target.value)}} style={styles.input} />
+                  <div style={{display:"flex", justifyContent:"space-between", fontWeight:"bold", margin:"10px 0"}}>
+                      <span>Total:</span><span>{totalPrice.toLocaleString()} Gold</span>
                   </div>
-                  <button onClick={sendWA} style={{...styles.btn, width: "100%", background: "#25D366", padding: 15, marginTop: 20, fontSize: 16}}>
-                      WhatsApp Checkout 🚀
-                  </button>
+                  <button onClick={sendWA} style={{...styles.btn, width: "100%", background: "#25D366", padding: 15}}>WhatsApp Checkout 🚀</button>
               </div>
            </div>
         </div>
       )}
-
     </div>
   );
 }
