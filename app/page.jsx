@@ -257,19 +257,14 @@ export default function Page() {
     window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
   };
     const titipJualWA = (type) => {
-      let text = "";
-      
-      if (type === 'item') {
-          // Format Titip Jual ITEM
-          text = `Halo min, mau nitip jual item dong.
+      let text = type === 'item' 
+        ? `Halo min, mau nitip jual item dong.
 Nama item :
 Harga item :
 Owner item :
 Harga nego/fix :
-Gambar item : (jika ada)`;
-      } else {
-          // Format Titip Jual AKUN
-          text = `Halo min, mau titip jual akun dong.
+Gambar item : (jika ada)`
+        : `Halo min, mau titip jual akun dong.
 Nickname :
 Level :
 Melee :
@@ -282,11 +277,8 @@ Nego/Fix :
 Harga : (bebas mau rp/gold)
 Wajib MM/Tidak :
 Gambar akun : (jika ada)`;
-      }
-
+        
       window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
-  };
-
   };
 
   const categories = ["All", ...new Set(items.map(i => i.kategori))];
