@@ -257,7 +257,7 @@ export default function Page() {
     window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
   };
   const titipJualWA = (type) => {
-      let text = type === 'item' ? "Halo Admin, mau titip jual ITEM." : "Halo Admin, mau titip jual AKUN.";
+      let text = type === 'item' ? "Halo Admin, mau titip jual ITEM." : "Halo Admin, mau titip jual Akun dong.%0ANicknamenya";
       window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
   };
 
