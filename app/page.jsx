@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+
+// URL ROBOT ADMIN (APPS SCRIPT)
+const AUCTION_API = "https://script.google.com/macros/s/AKfycbxmaYljbsb8Xj_z2Zl1eWQNXJo2PEESj0TriYwiasWqXIEB3rwF2wJxVAsA6qsqkVjR/exec";
 
 export default function Page() {
-  /* ===== STATE DATA ===== */
+  /* ===== STATE DATA STORE ===== */
   const [items, setItems] = useState([]);
   const [heroItems, setHeroItems] = useState([]); 
   const [search, setSearch] = useState("");
@@ -11,17 +14,25 @@ export default function Page() {
   const [sort, setSort] = useState("default");
   const [loading, setLoading] = useState(true);
 
+  /* ===== STATE CART & USER ===== */
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [wishlist, setWishlist] = useState([]);
   const [ign, setIgn] = useState("");
+  const [waNumber, setWaNumber] = useState(""); // State baru buat No WA bidder
+
+  /* ===== STATE AUCTION (LELANG) ===== */
+  const [auctionData, setAuctionData] = useState(null);
+  const [bidAmount, setBidAmount] = useState("");
+  const [bidLoading, setBidLoading] = useState(false);
+  const [timeLeft, setTimeLeft] = useState("Loading...");
 
   /* ===== STATE DARK MODE & STORE STATUS ===== */
   const [darkMode, setDarkMode] = useState(true);
   const [isStoreOpen, setIsStoreOpen] = useState(true);
 
-  /* ===== LOAD DATA ===== */
+  /* ===== LOAD DATA STORE (CSV) ===== */
   useEffect(() => {
     async function loadData() {
       setLoading(true);
@@ -38,18 +49,15 @@ export default function Page() {
             const c = r.split(",");
             const catRaw = c[0]?.trim() || "Uncategorized";
             
-            // LOGIC KHUSUS BARIS #HERO
-            // Kalau ini baris Hero, kita bajak kolom ke-3 (index 2) bukan jadi Harga, tapi jadi Target Kategori
             if (catRaw.toUpperCase() === "#HERO") {
                 return {
                     kategori: "#HERO",
                     nama: c[1]?.trim() || "Unknown",
-                    targetKategori: c[2]?.trim(), // <--- INI KUNCINYA (Baca Kolom C sebagai String)
+                    targetKategori: c[2]?.trim(),
                     status: "System"
                 };
             }
 
-            // BARIS NORMAL (PARSING HARGA JADI ANGKA)
             return {
               kategori: catRaw,
               nama: c[1]?.trim() || "Unknown",
@@ -60,28 +68,16 @@ export default function Page() {
             };
           });
 
-        /* --- 1. LOGIC CEK STATUS TOKO --- */
         const systemRow = parsed.find(
           item => item.kategori?.toUpperCase() === "#SYSTEM" && item.nama?.toUpperCase() === "STATUS_TOKO"
         );
-        if (systemRow && systemRow.status?.toUpperCase() === "TUTUP") {
-          setIsStoreOpen(false);
-        } else {
-          setIsStoreOpen(true);
-        }
+        setIsStoreOpen(!(systemRow && systemRow.status?.toUpperCase() === "TUTUP"));
 
-        /* --- 2. LOGIC CEK HERO ITEMS (STRICT MATCH) --- */
         const heroRows = parsed.filter(item => item.kategori === "#HERO");
-        
-        // Cari item asli yang Nama DAN Kategorinya cocok sama request #HERO
-        const realItems = parsed.filter(item => 
-            item.kategori !== "#SYSTEM" && 
-            item.kategori !== "#HERO"
-        );
+        const realItems = parsed.filter(item => item.kategori !== "#SYSTEM" && item.kategori !== "#HERO");
 
         const matchedHeroes = [];
         heroRows.forEach(h => {
-            // Cari item real yang namanya SAMA dan kategorinya SAMA dengan request di sheet
             const found = realItems.find(item => 
                 item.nama.toLowerCase() === h.nama.toLowerCase() && 
                 item.kategori.toLowerCase() === h.targetKategori?.toLowerCase()
@@ -90,13 +86,13 @@ export default function Page() {
         });
         
         setHeroItems(matchedHeroes);
-
-        /* --- 3. SET DATA UTAMA --- */
         setItems(realItems);
 
-        // Load Settings
         const savedIgn = localStorage.getItem("gearShopIGN");
         if (savedIgn) setIgn(savedIgn);
+        
+        const savedWa = localStorage.getItem("gearShopWA");
+        if (savedWa) setWaNumber(savedWa);
         
         const savedTheme = localStorage.getItem("gearShopTheme");
         if (savedTheme) setDarkMode(savedTheme === "dark");
@@ -110,6 +106,90 @@ export default function Page() {
     loadData();
   }, []);
 
+  /* ===== LOAD DATA AUCTION (POLLING) ===== */
+  useEffect(() => {
+    fetchAuction(); // Load pertama kali
+    const interval = setInterval(fetchAuction, 5000); // Refresh tiap 5 detik
+    return () => clearInterval(interval);
+  }, []);
+
+  // Timer Hitung Mundur
+  useEffect(() => {
+    if (!auctionData || !auctionData.endTime) return;
+    const timer = setInterval(() => {
+        const end = new Date(auctionData.endTime).getTime();
+        const now = new Date().getTime();
+        const distance = end - now;
+
+        if (distance < 0) {
+            setTimeLeft("LELANG DITUTUP");
+        } else {
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+            setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
+        }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [auctionData]);
+
+  async function fetchAuction() {
+    try {
+        const res = await fetch(AUCTION_API);
+        const data = await res.json();
+        setAuctionData(data);
+    } catch (error) {
+        console.error("Gagal load lelang", error);
+    }
+  }
+
+  /* ===== FUNGSI BIDDING ===== */
+  const handleBid = async (action) => {
+    if (!ign || !waNumber) {
+        alert("Wajib isi IGN dan No WA dulu di bagian atas/keranjang!");
+        setCartOpen(true);
+        return;
+    }
+
+    const amount = action === "BIN" ? auctionData.binPrice : parseInt(bidAmount);
+    
+    if (action === "BID" && (!amount || amount <= auctionData.currentBid)) {
+        alert(`Bid harus lebih tinggi dari ${formatGold(auctionData.currentBid + auctionData.increment)}`);
+        return;
+    }
+
+    if (!confirm(`Yakin mau ${action} seharga ${amount}?`)) return;
+
+    setBidLoading(true);
+    try {
+        // Pake 'no-cors' di fetch biasa agak tricky buat baca response,
+        // Kita pake text/plain biar ga kena preflight OPTIONS cors
+        const payload = JSON.stringify({
+            action: action,
+            bid: amount,
+            ign: ign,
+            wa: waNumber
+        });
+
+        await fetch(AUCTION_API, {
+            method: "POST",
+            body: payload,
+            headers: { "Content-Type": "text/plain" }
+        });
+
+        // Kita asumsi sukses (karena no-cors susah baca error detail di client side simple)
+        // Langsung refresh data
+        setBidAmount("");
+        setTimeout(fetchAuction, 1000); 
+        alert("Permintaan dikirim! Tunggu refresh...");
+
+    } catch (error) {
+        alert("Gagal kirim bid. Cek koneksi.");
+    } finally {
+        setBidLoading(false);
+    }
+  };
+
   /* ===== TOGGLE THEME ===== */
   const toggleTheme = () => {
     const newMode = !darkMode;
@@ -119,14 +199,11 @@ export default function Page() {
 
   /* ===== FILTER & SORT ===== */
   const categories = ["All", ...new Set(items.map(i => i.kategori))];
-
-  const filteredItems = items
-    .filter(i => {
+  const filteredItems = items.filter(i => {
       const nameMatch = i.nama.toLowerCase().includes(search.toLowerCase());
       const catMatch = category === "All" || i.kategori === category;
       return nameMatch && catMatch;
-    })
-    .sort((a, b) => {
+    }).sort((a, b) => {
       if (sort === "buy-asc") return a.buy - b.buy;
       if (sort === "buy-desc") return b.buy - a.buy;
       if (sort === "sell-asc") return a.sell - b.sell;
@@ -134,7 +211,7 @@ export default function Page() {
       return 0;
     });
 
-  /* ===== STATUS UI ===== */
+  /* ===== UI HELPERS ===== */
   const statusLabel = s => {
     const v = s?.toLowerCase();
     if (v === "full") return "🟢 Full";
@@ -152,7 +229,6 @@ export default function Page() {
     if (item.status?.toLowerCase() === "kosong") return;
     const key = `${item.nama}-${mode}`;
     const exist = cart.find(c => c.key === key);
-
     if (exist) {
       setCart(cart.map(c => c.key === key ? { ...c, qty: c.qty + 1 } : c));
     } else {
@@ -177,20 +253,19 @@ export default function Page() {
   const sendWA = () => {
     if (!cart.length) return;
     const userName = ign.trim() || "Guest";
+    const userWa = waNumber.trim() || "-";
     
     const itemText = cart.map(c => {
         const unitPrice = c.mode === "buy" ? c.buy : c.sell;
         const subTotal = unitPrice * c.qty;
-        
         let displayCategory = "";
         if (c.kategori && !c.kategori.toLowerCase().includes("diamond")) {
             displayCategory = `[${c.kategori}] `;
         }
-
         return `${displayCategory}${c.nama} (${c.mode}) x${c.qty} = ${subTotal.toLocaleString('id-ID')} Gold`;
     }).join("%0A");
 
-    const message = `Halo,%20saya%20*${encodeURIComponent(userName)}*%20mau%20order:%0A${itemText}%0A%0ATotal:%20${totalPrice.toLocaleString('id-ID')}%20Gold`;
+    const message = `Halo,%20saya%20*${encodeURIComponent(userName)}* (WA: ${userWa})%20mau%20order:%0A${itemText}%0A%0ATotal:%20${totalPrice.toLocaleString('id-ID')}%20Gold`;
     window.open(`https://wa.me/6283101456267?text=${message}`, "_blank");
   };
 
@@ -200,7 +275,7 @@ export default function Page() {
 
   const formatGold = (val) => (
     <span style={{ fontWeight: "bold", color: "#B8860B" }}>
-      {val.toLocaleString('id-ID')} 🪙
+      {val ? val.toLocaleString('id-ID') : 0} 🪙
     </span>
   );
 
@@ -215,7 +290,9 @@ export default function Page() {
     modalBg: darkMode ? "#1e1e1e" : "#fff",
     subText: darkMode ? "#aaa" : "#666",
     heroBg: darkMode ? "linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%)" : "linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%)",
-    heroBorder: "1px solid #B8860B"
+    heroBorder: "1px solid #B8860B",
+    auctionBg: darkMode ? "linear-gradient(135deg, #2c0000 0%, #4a0000 100%)" : "linear-gradient(135deg, #fff0f0 0%, #ffe0e0 100%)",
+    auctionBorder: "2px solid #FF4444"
   };
 
   /* ===== TAMPILAN JIKA TOKO TUTUP ===== */
@@ -253,7 +330,73 @@ export default function Page() {
 
       <main style={{ padding: 16 }}>
         
-        {/* === HERO SECTION (STRICT MATCH) === */}
+        {/* === SECTION 1: LIVE AUCTION (NEW!) === */}
+        {auctionData && !auctionData.isEnded && (
+            <div style={{ marginBottom: 24, padding: 20, background: theme.auctionBg, border: theme.auctionBorder, borderRadius: 12, boxShadow: "0 0 20px rgba(255, 0, 0, 0.2)" }}>
+                <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom: 15}}>
+                    <h2 style={{margin:0, color:"#FF4444", fontSize: 20}}>🔨 LIVE LELANG</h2>
+                    <div style={{background:"red", color:"white", padding:"4px 8px", borderRadius:4, fontSize:12, fontWeight:"bold", animation:"pulse 1s infinite"}}>LIVE</div>
+                </div>
+
+                <div style={{textAlign:"center", marginBottom: 20}}>
+                    <div style={{fontSize:14, color: theme.subText}}>Item yang dilelang:</div>
+                    <strong style={{fontSize: 24, display:"block", margin:"5px 0"}}>{auctionData.item}</strong>
+                    <div style={{fontSize: 18, fontWeight:"bold", color:"#FF4444", border:"1px solid #FF4444", display:"inline-block", padding:"4px 12px", borderRadius: 8, marginTop: 5}}>
+                        ⏱️ {timeLeft}
+                    </div>
+                </div>
+
+                <div style={{background: theme.cardBg, padding: 15, borderRadius: 8, marginBottom: 15, border: theme.cardBorder}}>
+                    <div style={{display:"flex", justifyContent:"space-between", borderBottom: `1px solid ${darkMode?"#444":"#eee"}`, paddingBottom: 10, marginBottom: 10}}>
+                        <span style={{color: theme.subText}}>Harga Tertinggi:</span>
+                        <span style={{fontSize:18, fontWeight:"bold", color:"#25D366"}}>{formatGold(auctionData.currentBid)}</span>
+                    </div>
+                    <div style={{display:"flex", justifyContent:"space-between"}}>
+                        <span style={{color: theme.subText}}>Sultan (Leader):</span>
+                        <span style={{fontWeight:"bold", color:"#3C6EE2"}}>{auctionData.bidderName || "Belum ada"}</span>
+                    </div>
+                </div>
+
+                {/* FORM BIDDING */}
+                <div style={{display:"flex", gap: 10, flexDirection: "column"}}>
+                    <div style={{display:"flex", gap: 5}}>
+                        <input 
+                            type="number" 
+                            placeholder={`Minimal: ${auctionData.currentBid + auctionData.increment}`}
+                            value={bidAmount}
+                            onChange={e => setBidAmount(e.target.value)}
+                            style={{...styles.input, marginBottom:0, flex:1, background: theme.inputBg, color:theme.text, border:theme.inputBorder}}
+                        />
+                        <button 
+                            onClick={() => handleBid("BID")} 
+                            disabled={bidLoading}
+                            style={{background: "#FF4444", color:"white", border:"none", borderRadius:8, padding:"0 20px", fontWeight:"bold", cursor: "pointer"}}
+                        >
+                            {bidLoading ? "..." : "BID!"}
+                        </button>
+                    </div>
+                    
+                    <button 
+                        onClick={() => handleBid("BIN")}
+                        disabled={bidLoading}
+                        style={{width:"100%", background:"#B8860B", color:"white", border:"none", padding:12, borderRadius:8, fontWeight:"bold", cursor:"pointer"}}
+                    >
+                         ⚡ BELI LANGSUNG (BIN): {formatGold(auctionData.binPrice)}
+                    </button>
+                    
+                    {(!ign || !waNumber) && <div style={{fontSize:12, color:"orange", textAlign:"center", marginTop:5}}>*Isi IGN & WA di menu Keranjang dulu buat ngebid!</div>}
+                </div>
+            </div>
+        )}
+
+        {auctionData && auctionData.isEnded && (
+             <div style={{ marginBottom: 24, padding: 15, background: darkMode?"#222":"#ddd", borderRadius: 12, textAlign:"center", opacity: 0.8 }}>
+                <h3>🔒 Lelang Selesai</h3>
+                <p>Pemenang: <strong>{auctionData.bidderName}</strong> di harga {formatGold(auctionData.currentBid)}</p>
+             </div>
+        )}
+        
+        {/* === SECTION 2: HERO ITEMS (BANNER) === */}
         {heroItems.length > 0 && (
           <div style={{ marginBottom: 24 }}>
             <h3 style={{ margin: "0 0 10px 0", fontSize: 14, color: "#B8860B", textTransform: "uppercase", letterSpacing: 1 }}>🔥 Hot Items</h3>
@@ -296,8 +439,8 @@ export default function Page() {
             </div>
           </div>
         )}
-        {/* === END HERO SECTION === */}
 
+        {/* SEARCH & FILTER */}
         <input
           placeholder="Cari item..."
           value={search}
@@ -326,6 +469,7 @@ export default function Page() {
           </select>
         </div>
 
+        {/* ITEM LIST */}
         {loading ? (
           <div style={{ textAlign: "center", padding: 20 }}>Loading...</div>
         ) : (
@@ -368,25 +512,34 @@ export default function Page() {
         <div style={{height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between"}}>
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 15 }}>
-                <h3 style={{ margin: 0 }}>Keranjang</h3>
+                <h3 style={{ margin: 0 }}>Keranjang & Profil</h3>
                 <button onClick={() => setCartOpen(false)} style={{ border: "none", background: "none", fontSize: 24, color: theme.text }}>✕</button>
               </div>
 
               <div style={{marginBottom: 15, background: darkMode ? "#2c2c2c" : "#f9f9f9", padding: 10, borderRadius: 8, border: theme.inputBorder}}>
-                <div style={{fontSize: 12, fontWeight: "bold", marginBottom: 5, color: theme.subText}}>Nama In-Game (IGN):</div>
+                <div style={{fontSize: 12, fontWeight: "bold", marginBottom: 5, color: theme.subText}}>Data Diri (Wajib buat Lelang):</div>
                 <input 
-                    placeholder="Contoh: DragonSlayer99"
+                    placeholder="IGN (Nama Game)"
                     value={ign}
                     onChange={e => {
                         setIgn(e.target.value);
                         localStorage.setItem("gearShopIGN", e.target.value);
                     }}
+                    style={{...styles.input, marginBottom: 8, padding: 8, fontSize: 14, background: darkMode ? "#1e1e1e" : "#fff", color: theme.text, border: theme.inputBorder}}
+                />
+                <input 
+                    placeholder="Nomor WhatsApp (08xxx)"
+                    value={waNumber}
+                    onChange={e => {
+                        setWaNumber(e.target.value);
+                        localStorage.setItem("gearShopWA", e.target.value);
+                    }}
                     style={{...styles.input, marginBottom: 0, padding: 8, fontSize: 14, background: darkMode ? "#1e1e1e" : "#fff", color: theme.text, border: theme.inputBorder}}
                 />
               </div>
               
-              <div style={{ maxHeight: "50vh", overflowY: "auto" }}>
-                {cart.map(c => (
+              <div style={{ maxHeight: "40vh", overflowY: "auto" }}>
+                {cart.length === 0 ? <p style={{textAlign:"center", color:theme.subText}}>Keranjang kosong.</p> : cart.map(c => (
                   <div key={c.key} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, borderBottom: darkMode ? "1px solid #333" : "1px solid #eee", paddingBottom: 8 }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 14, fontWeight: "bold" }}>{c.nama}</div>
@@ -422,7 +575,7 @@ export default function Page() {
 
       {cartOpen && <div style={styles.backdrop} onClick={() => setCartOpen(false)} />}
 
-      {/* MODAL KONFIRMASI */}
+      {/* MODAL KONFIRMASI CHECKOUT */}
       {confirmOpen && (
         <div style={styles.modalWrap} onClick={() => setConfirmOpen(false)}>
           <div style={{...styles.modal, background: theme.modalBg, color: theme.text}} onClick={e => e.stopPropagation()}>
