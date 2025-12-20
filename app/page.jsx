@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-// URL ROBOT ADMIN (UPDATED - NEW)
+// URL ROBOT ADMIN (UPDATED)
 const AUCTION_API = "https://script.google.com/macros/s/AKfycbwlQGnAgMh6Mzd87TUyEVfXbSlnEwje32CUY6Q4ItsKIvIOsTIbD4TzODEHJn7mkhnK/exec";
 
 export default function Page() {
@@ -430,58 +430,56 @@ export default function Page() {
                     )}
                 </div>
 
-                {/* FORM BIDDING */}
+                {/* FORM BIDDING (FIXED LAYOUT - SIMPLE VERSION) */}
                 {!auctionData.isEnded && (
                     <div style={{display:"flex", gap: 10, flexDirection: "column", marginTop: 20}}>
                         
-                        {/* INPUT & TOMBOL BID (FIXED UI) */}
-                        <div style={{display:"flex", gap: 8, alignItems: "stretch"}}>
-                            <div style={{flex: 1, position: "relative", minWidth: 0}}>
-                                <input 
-                                    type="number" 
-                                    placeholder={`${auctionData.currentBid + auctionData.increment}`}
-                                    value={bidAmount}
-                                    onChange={e => setBidAmount(e.target.value)}
-                                    style={{
-                                        ...styles.input, 
-                                        marginBottom:0, 
-                                        width: "100%", 
-                                        height: "100%",
-                                        paddingRight: 10, 
-                                        background: theme.inputBg, 
-                                        color:theme.text, 
-                                        border:theme.inputBorder,
-                                        fontSize: 16,
-                                        fontWeight: "bold"
-                                    }}
-                                />
-                            </div>
+                        {/* BARIS INPUT & TOMBOL BID */}
+                        <div style={{display:"flex", gap: 8, alignItems: "center"}}>
+                            <input 
+                                type="number" 
+                                placeholder={`${auctionData.currentBid + auctionData.increment}`}
+                                value={bidAmount}
+                                onChange={e => setBidAmount(e.target.value)}
+                                style={{
+                                    ...styles.input, 
+                                    marginBottom: 0, 
+                                    flex: 1,       
+                                    width: "auto", 
+                                    padding: "12px",
+                                    background: theme.inputBg, 
+                                    color: theme.text, 
+                                    border: theme.inputBorder,
+                                    fontSize: 16,
+                                    fontWeight: "bold"
+                                }}
+                            />
                             <button 
                                 onClick={() => handleBid("BID")} 
                                 disabled={bidLoading}
                                 style={{
-                                    flexShrink: 0, 
-                                    minWidth: "80px",
+                                    whiteSpace: "nowrap",
                                     background: "#FF4444", 
                                     color: "white", 
                                     border: "none", 
                                     borderRadius: 8, 
-                                    padding: "0 20px", 
+                                    padding: "12px 24px",
                                     fontWeight: "bold", 
                                     cursor: "pointer", 
                                     fontSize: 16,
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
                                     boxShadow: "0 2px 5px rgba(0,0,0,0.2)"
                                 }}
                             >
                                 {bidLoading ? "..." : "BID!"}
                             </button>
                         </div>
-                        <div style={{fontSize: 11, color: theme.subText, marginLeft: 5}}>*Minimal nambah: {formatGold(auctionData.increment)}</div>
+
+                        {/* Teks Minimal Nambah (Sekarang aman gak bakal ketutup) */}
+                        <div style={{fontSize: 11, color: theme.subText, marginLeft: 5, marginTop: -5}}>
+                            *Minimal nambah: {formatGold(auctionData.increment)}
+                        </div>
                         
-                        {/* TOMBOL BIN (HANYA MUNCUL JIKA HARGA BIN > HARGA SEKARANG) */}
+                        {/* TOMBOL BIN (Logika Hide Aman) */}
                         {auctionData.binPrice > auctionData.currentBid ? (
                             <button 
                                 onClick={() => handleBid("BIN")}
