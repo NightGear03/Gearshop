@@ -226,11 +226,9 @@ export default function Page() {
   };
 
   const addToCart = (item, mode) => {
-    // Note: Logika status button sekarang dihandle di UI Render, 
-    // jadi disini kita double check aja biar aman.
+    // Logika Status: Kosong gak bisa diapa-apain
     if (item.status?.toLowerCase() === "kosong") return; 
     
-    // Key unik biar beda item + kategori
     const key = `${item.nama}-${item.kategori}-${mode}`;
     const exist = cart.find(c => c.key === key);
     if (exist) {
@@ -249,7 +247,7 @@ export default function Page() {
   
   const totalQty = cart.reduce((s, c) => s + c.qty, 0);
   const totalPrice = cart.reduce((s, c) => s + (c.mode === "buy" ? c.buy : c.sell) * c.qty, 0);
-  // FIX: Checkout WA (Kategori ditambahin kecuali Diamond)
+    /* === FIX: CHECKOUT WA (Kategori included, kecuali Diamond) === */
   const sendWA = () => {
     if (!cart.length) return;
     if (!ign) {
@@ -257,7 +255,7 @@ export default function Page() {
         return;
     }
     const itemText = cart.map(c => {
-        // Logic: Kalau Diamond ga usah pake kategori, selain itu pake
+        // Kalau kategori mengandung kata 'diamond', jangan tulis kategori
         const kategoriStr = c.kategori?.toLowerCase().includes("diamond") ? "" : ` [${c.kategori}]`;
         return `- ${c.nama}${kategoriStr} (${c.mode.toUpperCase()}) x${c.qty} = ${((c.mode === 'buy' ? c.buy : c.sell) * c.qty).toLocaleString('id-ID')}`;
     }).join("%0A");
@@ -320,7 +318,7 @@ export default function Page() {
       <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>
               <div style={{display:"flex", justifyContent:"space-between", marginBottom: 20}}>
-                  <h2 style={{margin:0}}>🏪 Pasar Warga</h2>
+                  <h2 style={{margin:0}}>🏪 Pasar Warga (v2.0)</h2>
                   <button onClick={()=>setMarketOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button>
               </div>
               <div style={styles.tabContainer}>
@@ -343,7 +341,7 @@ export default function Page() {
                           <button onClick={()=>contactOwner(item, 'item')} style={{...styles.btn, marginTop:8, fontSize: 12}}>💬 Chat Owner</button>
                       </div>
                   ))}
-                  {/* FIX: PASAR AKUN TOMBOL NEGO/FIX */}
+                  {/* FIX: LOGIC TOMBOL MARKET AKUN (FIX PRICE / NEGO) */}
                   {marketTab === 'accounts' && titipanAccounts.map((acc, idx) => (
                       <div key={idx} style={{...styles.card, flexDirection: "row", gap: 12, alignItems: "center"}}>
                           <div style={{width: 80, height: 80, background: "#333", borderRadius: "50%", overflow:"hidden", flexShrink: 0}}>
@@ -365,7 +363,6 @@ export default function Page() {
                                       <div style={{color: "#4caf50", fontWeight:"bold", fontSize: 14}}>{acc.harga}</div>
                                   </div>
                                   <button onClick={()=>contactOwner(acc, 'account')} style={{...styles.btn, fontSize: 12, background: "#333", border: "1px solid #555"}}>
-                                      {/* Cek tipeHarga disini */}
                                       {acc.tipeHarga?.toLowerCase() === 'fix' ? '💬 Beli (Fix)' : '💬 Nego'}
                                   </button>
                               </div>
@@ -373,7 +370,6 @@ export default function Page() {
                       </div>
                   ))}
                   
-                  {/* Kosong State */}
                   {((marketTab === 'items' && titipanItems.length === 0) || (marketTab === 'accounts' && titipanAccounts.length === 0)) && (
                       <div style={{textAlign: "center", color: theme.subText, marginTop: 40, width: "100%", gridColumn: "1 / -1"}}>
                         <div style={{fontSize: 40}}>🕵️</div>
@@ -469,13 +465,12 @@ export default function Page() {
         </div>
         )}
 
-        {/* HERO ITEM - FIX: Format Harga Gold */}
+        {/* FIX: HERO ITEM (Harga Full Gold) */}
         {heroItems.length > 0 && (
           <div style={{ marginBottom: 20 }}>
             <h3 style={{ marginLeft: 8, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>🔥 Hot Items</h3>
             <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 10, paddingLeft: 8 }}>
                {heroItems.map((item, idx) => {
-                 // Logic Hero Items: Biasanya cuma buat beli
                  const status = item.status?.toLowerCase();
                  const canBuy = (status === 'ready' || status === 'full') && item.buy > 0;
                  return (
@@ -491,13 +486,12 @@ export default function Page() {
                                ...styles.btn, 
                                fontSize: 11, 
                                width: "100%", 
-                               // Kalau disabled warnanya abu dan opacity turun
                                background: canBuy ? theme.accent : "#555",
                                opacity: canBuy ? 1 : 0.7,
                                cursor: canBuy ? "pointer" : "not-allowed"
                            }}
                         >
-                           {/* Pake LocaleString biar sesuai format gold */}
+                           {/* Harga sesuai format Gold (bukan 100k lagi) */}
                            {canBuy ? `Beli ${item.buy.toLocaleString('id-ID')}` : (status === 'kosong' ? "Stok Habis" : "N/A")}
                        </button>
                     </div>
@@ -510,4 +504,121 @@ export default function Page() {
         {/* FILTER & SEARCH */}
         <div style={{ display: "flex", gap: 10, marginBottom: 20, overflowX: "auto", paddingBottom: 5 }}>
           {categories.map(c => (
-            <button key={c} onClick={() => setCategory(c)} style={{ padding: "8px 16px", borderRadius: 20, border: "none", background: category === c ? theme.accent : theme.cardBg, color: category === 
+            <button key={c} onClick={() => setCategory(c)} style={{ padding: "8px 16px", borderRadius: 20, border: "none", background: category === c ? theme.accent : theme.cardBg, color: category === c ? "#fff" : theme.text, whiteSpace: "nowrap", cursor: "pointer", border: category === c ? "none" : theme.border }}>
+              {c}
+            </button>
+          ))}
+        </div>
+        <input placeholder="Cari item..." value={search} onChange={e => setSearch(e.target.value)} style={styles.input} />
+
+        {/* FIX: LIST ITEM TOKO (LOGIC TOMBOL WARNA-WARNI) */}
+        <div style={styles.grid}>
+          {filteredItems.map((item, idx) => {
+            const status = item.status?.toLowerCase();
+            
+            // Logic Visibility Tombol
+            const canBuy = (status === "ready" || status === "full") && item.buy > 0;
+            const canSell = (status === "ready" || status === "take") && item.sell > 0;
+
+            return (
+            <div key={idx} style={styles.card}>
+              <div style={{fontWeight: "bold", fontSize: 16, color: "#FFD700"}}>
+                  {item.nama}
+                  <span style={{fontSize: 10, display:"block", color: theme.subText, fontWeight:"normal"}}>({item.kategori})</span>
+              </div>
+              <div style={{fontSize: 12, color: status === 'full' ? '#4caf50' : status === 'kosong' ? '#f44336' : '#ff9800'}}>
+                  {statusLabel(item.status)}
+              </div>
+              
+              <div style={{marginTop: "auto"}}>
+                 {/* TOMBOL BELI (Beda warna kalau mati) */}
+                 <button 
+                     onClick={() => canBuy && addToCart(item, 'buy')} 
+                     disabled={!canBuy}
+                     style={{
+                         ...styles.btn, 
+                         width: "100%", 
+                         marginBottom: 4, 
+                         background: canBuy ? theme.accent : "#555", 
+                         opacity: canBuy ? 1 : 0.6,
+                         cursor: canBuy ? "pointer" : "not-allowed"
+                     }}
+                 >
+                     {canBuy 
+                        ? <span>Beli <span style={{color: "white", fontWeight: "bold"}}>{item.buy.toLocaleString('id-ID')}</span> 🪙</span> 
+                        : (status === 'take' ? "Stok Habis" : "Tidak Tersedia")
+                     }
+                 </button>
+
+                 {/* TOMBOL JUAL (Beda warna kalau mati) */}
+                 <button 
+                     onClick={() => canSell && addToCart(item, 'sell')} 
+                     disabled={!canSell}
+                     style={{
+                         ...styles.btn, 
+                         width: "100%", 
+                         background: canSell ? "#333" : "#222", 
+                         border: "1px solid #555",
+                         opacity: canSell ? 1 : 0.5,
+                         cursor: canSell ? "pointer" : "not-allowed"
+                     }}
+                 >
+                     {canSell 
+                        ? `Jual ${item.sell.toLocaleString('id-ID')}` 
+                        : (status === 'full' ? "Toko Penuh" : "Jual N/A")
+                     }
+                 </button>
+              </div>
+            </div>
+          )})}
+        </div>
+      </main>
+
+      {marketOpen && <MarketModal />}
+
+      {cartOpen && (
+        <div 
+            onClick={(e) => { if (e.target === e.currentTarget) setCartOpen(false); }}
+            style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", zIndex: 300, display: "flex", justifyContent: "end" }}
+        >
+           <div style={{ width: "70%", maxWidth: 320, background: theme.modalBg, height: "100%", padding: 20, overflowY: "auto", borderLeft: theme.border, cursor: "default" }}>
+              <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20}}>
+                  <h2>Keranjang</h2>
+                  <button onClick={() => setCartOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button>
+              </div>
+              
+              {cart.map(c => (
+                  <div key={c.key} style={{marginBottom: 15, paddingBottom: 15, borderBottom: "1px solid #333"}}>
+                      <div style={{fontWeight:"bold"}}>{c.nama} ({c.mode})</div>
+                      <div style={{fontSize:11, color: theme.subText}}>Kategori: {c.kategori}</div>
+                      <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 8}}>
+                          <div>{formatGold(c.mode === 'buy' ? c.buy : c.sell)} x {c.qty}</div>
+                          <div style={{display:"flex", gap: 10}}>
+                              <button onClick={() => updateQty(c, c.qty - 1)}>-</button>
+                              <button onClick={() => updateQty(c, c.qty + 1)}>+</button>
+                              <button onClick={() => removeFromCart(c)} style={{background:"red", color:"white", border:"none", borderRadius:4}}>Hapus</button>
+                          </div>
+                      </div>
+                  </div>
+              ))}
+
+              <div style={{marginTop: 20, paddingTop: 20, borderTop: "2px solid #555"}}>
+                  <h4 style={{marginBottom: 10}}>Data Pembeli</h4>
+                  <input placeholder="Nickname In-Game (IGN) *" value={ign} onChange={(e) => {setIgn(e.target.value); localStorage.setItem("gearShopIGN", e.target.value)}} style={styles.input} />
+                  <input placeholder="Nomor WhatsApp (Optional)" type="tel" value={waNumber} onChange={(e) => {setWaNumber(e.target.value); localStorage.setItem("gearShopWA", e.target.value)}} style={styles.input} />
+                  
+                  <div style={{display:"flex", justifyContent:"space-between", fontSize: 18, fontWeight:"bold", marginTop: 10}}>
+                      <span>Total:</span>
+                      <span>{formatGold(totalPrice)}</span>
+                  </div>
+                  <button onClick={sendWA} style={{...styles.btn, width: "100%", background: "#25D366", padding: 15, marginTop: 20, fontSize: 16}}>
+                      WhatsApp Checkout 🚀
+                  </button>
+              </div>
+           </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
