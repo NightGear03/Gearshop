@@ -23,7 +23,7 @@ export default function Page() {
   const [marketTab, setMarketTab] = useState("items"); // 'items' or 'accounts'
   const [titipanItems, setTitipanItems] = useState([]);
   const [titipanAccounts, setTitipanAccounts] = useState([]);
-  const [titipMenuOpen, setTitipMenuOpen] = useState(false); // Untuk floating button
+  const [titipMenuOpen, setTitipMenuOpen] = useState(false); 
 
   /* ===== STATE CART & USER ===== */
   const [cart, setCart] = useState([]);
@@ -42,7 +42,7 @@ export default function Page() {
   const [darkMode, setDarkMode] = useState(true);
   const [isStoreOpen, setIsStoreOpen] = useState(true);
 
-  /* ===== LOAD ALL DATA (STORE + TITIPAN) ===== */
+  /* ===== LOAD ALL DATA ===== */
   useEffect(() => {
     async function loadData() {
       setLoading(true);
@@ -79,17 +79,26 @@ export default function Page() {
     loadData();
   }, []);
 
-  // -- Parser Toko Utama --
+  // -- Parser Toko Utama (DIKEMBALIKAN KE LOGIKA AWAL) --
   const parseStoreData = (text) => {
     const rows = text.split(/\r?\n/).slice(1);
+    
     const parsed = rows.filter(r => r.trim() !== "").map(r => {
       const c = r.split(",");
-      // Logic Hero/System sama seperti sebelumnya
-      if (c[0]?.trim().toUpperCase() === "#HERO") {
-          return { kategori: "#HERO", nama: c[1]?.trim(), targetKategori: c[2]?.trim() };
+      const catRaw = c[0]?.trim() || "Uncategorized";
+
+      // Cek Special Category #HERO
+      if (catRaw.toUpperCase() === "#HERO") {
+          return {
+              kategori: "#HERO",
+              nama: c[1]?.trim() || "Unknown",
+              targetKategori: c[2]?.trim(),
+              status: "System"
+          };
       }
+
       return {
-        kategori: c[0]?.trim() || "Uncategorized",
+        kategori: catRaw,
         nama: c[1]?.trim() || "Unknown",
         buy: parseInt(c[2]?.replace(/\D/g, '')) || 0,
         sell: parseInt(c[3]?.replace(/\D/g, '')) || 0,
@@ -98,16 +107,21 @@ export default function Page() {
       };
     });
 
+    // Cek Status Toko
     const systemRow = parsed.find(item => item.kategori?.toUpperCase() === "#SYSTEM" && item.nama?.toUpperCase() === "STATUS_TOKO");
     setIsStoreOpen(!(systemRow && systemRow.status?.toUpperCase() === "TUTUP"));
 
+    // Filter Hero & Items
     const heroRows = parsed.filter(item => item.kategori === "#HERO");
     const realItems = parsed.filter(item => item.kategori !== "#SYSTEM" && item.kategori !== "#HERO");
 
     // Match Hero Logic
     const matchedHeroes = [];
     heroRows.forEach(h => {
-        const found = realItems.find(item => item.nama.toLowerCase() === h.nama?.toLowerCase());
+        const found = realItems.find(item => 
+            item.nama.toLowerCase() === h.nama.toLowerCase() && 
+            item.kategori.toLowerCase() === h.targetKategori?.toLowerCase()
+        );
         if (found) matchedHeroes.push(found);
     });
     
@@ -120,13 +134,12 @@ export default function Page() {
     const rows = text.split(/\r?\n/).slice(1);
     const data = rows.filter(r => r.trim() !== "").map(r => {
         const c = r.split(","); 
-        // Asumsi Kolom CSV: Nama, Harga, Owner, Status, TipeHarga(Nego/Fix), Gambar
         return {
             nama: c[0]?.trim(),
             harga: c[1]?.trim(),
             owner: c[2]?.trim(),
-            status: c[3]?.trim(), // Avail/Sold
-            tipeHarga: c[4]?.trim(), // Nego/Fix
+            status: c[3]?.trim(),
+            tipeHarga: c[4]?.trim(),
             img: c[5]?.trim() || null
         };
     });
@@ -138,7 +151,6 @@ export default function Page() {
     const rows = text.split(/\r?\n/).slice(1);
     const data = rows.filter(r => r.trim() !== "").map(r => {
         const c = r.split(",");
-        // Asumsi Kolom: NamaAkun, Level, Melee, Dist, Magic, Def, Set, Owner, Status, TipeHarga, WajibMM, Harga, Gambar
         return {
             nama: c[0]?.trim(),
             level: c[1]?.trim(),
@@ -166,7 +178,6 @@ export default function Page() {
     return () => clearInterval(interval);
   }, []);
 
-  // Timer Hitung Mundur Lelang
   useEffect(() => {
     if (!auctionData || !auctionData.endTime) return;
     const timer = setInterval(() => {
@@ -193,7 +204,7 @@ export default function Page() {
     } catch (error) { console.error("Err lelang", error); }
   }
 
-  /* ===== FUNGSI ACTION ===== */
+  /* ===== FUNGSI BIDDING ===== */
   const handleBid = async (action) => {
     if (!ign || !waNumber) {
         alert("Wajib isi IGN dan No WA dulu di bagian atas/keranjang!");
@@ -226,6 +237,18 @@ export default function Page() {
     localStorage.setItem("gearShopTheme", newMode ? "dark" : "light");
   };
 
+  /* ===== UI HELPERS (INI YANG DIKEMBALIKAN) ===== */
+  const statusLabel = (s) => {
+    const v = s?.toLowerCase();
+    if (v === "full") return "🟢 Full";
+    if (v === "ready") return "🔵 Ready";
+    if (v === "take") return "🟡 Take";
+    if (v === "kosong") return "🔴 Kosong";
+    return s;
+  };
+
+  const formatGold = (val) => <span style={{ fontWeight: "bold", color: "#B8860B" }}>{val ? val.toLocaleString('id-ID') : 0} 🪙</span>;
+  
   /* ===== CART LOGIC ===== */
   const addToCart = (item, mode) => {
     if (item.status?.toLowerCase() === "kosong") return;
@@ -254,9 +277,8 @@ export default function Page() {
     window.open(`https://wa.me/6283101456267?text=${message}`, "_blank");
   };
 
-  /* ===== WHATSAPP TITIPAN GENERATOR ===== */
+  /* ===== MARKET & TITIPAN LOGIC ===== */
   const contactOwner = (item, type) => {
-    // Chat Admin untuk perantara
     const text = type === 'account' 
        ? `Halo Admin, saya minat akun titipan: *${item.nama}* (Owner: ${item.owner}) seharga ${item.harga}. Status: ${item.status}`
        : `Halo Admin, saya minat barang titipan: *${item.nama}* (Owner: ${item.owner}) seharga ${item.harga}.`;
@@ -273,9 +295,8 @@ export default function Page() {
       window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
   };
 
-  /* ===== HELPERS ===== */
-  const formatGold = (val) => <span style={{ fontWeight: "bold", color: "#B8860B" }}>{val ? val.toLocaleString('id-ID') : 0} 🪙</span>;
-  
+  /* ===== FILTERING ===== */
+  // Pastikan kategori muncul walaupun item kosong/loading
   const categories = ["All", ...new Set(items.map(i => i.kategori))];
   const filteredItems = items.filter(i => {
       return (i.nama.toLowerCase().includes(search.toLowerCase())) && (category === "All" || i.kategori === category);
@@ -289,7 +310,8 @@ export default function Page() {
     border: darkMode ? "1px solid #333" : "1px solid #ddd",
     modalBg: darkMode ? "#222" : "#fff",
     accent: "#B8860B",
-    inputBg: darkMode ? "#2c2c2c" : "#fff"
+    inputBg: darkMode ? "#2c2c2c" : "#fff",
+    subText: darkMode ? "#aaa" : "#666"
   };
 
   const styles = {
@@ -300,8 +322,9 @@ export default function Page() {
       card: { background: theme.cardBg, border: theme.border, borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 6 },
       input: { width: "100%", padding: 8, borderRadius: 4, border: theme.border, background: theme.inputBg, color: theme.text, marginBottom: 10 },
       btn: { background: theme.accent, color: "#fff", border: "none", padding: "8px", borderRadius: 4, cursor: "pointer", fontWeight: "bold" },
+      
       // MARKET MODAL STYLES
-      modalOverlay: { position: "fixed", top:0, left:0, right:0, bottom:0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", justifyContent: "center", alignItems: "end" }, // Align end for mobile bottom sheet feel or center
+      modalOverlay: { position: "fixed", top:0, left:0, right:0, bottom:0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", justifyContent: "center", alignItems: "end" }, 
       modalContent: { background: theme.modalBg, width: "100%", height: "90vh", borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, overflowY: "auto", position: "relative" },
       tabContainer: { display: "flex", gap: 10, marginBottom: 20, borderBottom: theme.border, paddingBottom: 10 },
       tabBtn: (active) => ({ flex: 1, padding: 10, borderRadius: 8, background: active ? theme.accent : "transparent", color: active ? "#fff" : theme.text, border: active ? "none" : theme.border, cursor: "pointer", fontWeight: "bold", textAlign: "center" }),
@@ -309,26 +332,22 @@ export default function Page() {
       fabMenu: { position: "fixed", bottom: 95, right: 30, display: "flex", flexDirection: "column", gap: 10, zIndex: 201 }
   };
 
-  /* ===== MARKET MODAL COMPONENT (INLINE) ===== */
+  /* ===== MARKET MODAL COMPONENT ===== */
   const MarketModal = () => (
       <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>
-              {/* Header Modal */}
               <div style={{display:"flex", justifyContent:"space-between", marginBottom: 20}}>
                   <h2 style={{margin:0}}>🏪 Pasar Warga</h2>
                   <button onClick={()=>setMarketOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button>
               </div>
 
-              {/* Tabs */}
               <div style={styles.tabContainer}>
                   <button style={styles.tabBtn(marketTab === 'items')} onClick={()=>setMarketTab('items')}>⚔️ ITEM</button>
                   <button style={styles.tabBtn(marketTab === 'accounts')} onClick={()=>setMarketTab('accounts')}>👤 AKUN</button>
               </div>
 
-              {/* Grid Content */}
               <div style={marketTab === 'items' ? styles.grid : {...styles.grid, gridTemplateColumns: "1fr"}}>
-                  
-                  {/* === TAB ITEMS === */}
+                  {/* TAB ITEMS */}
                   {marketTab === 'items' && titipanItems.map((item, idx) => (
                       <div key={idx} style={{...styles.card, position: "relative", opacity: item.status?.toLowerCase() === 'sold' ? 0.6 : 1}}>
                           {item.status?.toLowerCase() === 'sold' && <div style={{position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", color:"red", fontWeight:"bold", fontSize:20, zIndex:2}}>SOLD</div>}
@@ -345,7 +364,7 @@ export default function Page() {
                       </div>
                   ))}
 
-                  {/* === TAB ACCOUNTS === */}
+                  {/* TAB ACCOUNTS */}
                   {marketTab === 'accounts' && titipanAccounts.map((acc, idx) => (
                       <div key={idx} style={{...styles.card, flexDirection: "row", gap: 12, alignItems: "center"}}>
                           <div style={{width: 80, height: 80, background: "#333", borderRadius: "50%", overflow:"hidden", flexShrink: 0}}>
@@ -356,8 +375,6 @@ export default function Page() {
                                   <div style={{fontWeight:"bold", fontSize: 16, color: "#FFD700"}}>{acc.nama} <span style={{fontSize:12, color:"#aaa"}}>Lv.{acc.level}</span></div>
                                   {acc.wajibMM?.toLowerCase() === 'ya' && <div style={{fontSize: 10, background: "red", color:"white", padding: "2px 6px", borderRadius: 4, height:"fit-content"}}>🛡️ WAJIB MM</div>}
                               </div>
-                              
-                              {/* Mini Stat Grid */}
                               <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap: 4, fontSize: 11, margin: "8px 0", color: "#ccc", background:"rgba(255,255,255,0.05)", padding: 6, borderRadius: 4}}>
                                   <div>⚔️ Mel: {acc.melee}</div>
                                   <div>🏹 Dis: {acc.dist}</div>
@@ -365,7 +382,6 @@ export default function Page() {
                                   <div>🛡️ Def: {acc.def}</div>
                               </div>
                               <div style={{fontSize: 11, marginBottom: 4, color: "#aaa"}}>Set: {acc.setInfo}</div>
-                              
                               <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 4}}>
                                   <div>
                                       <div style={{fontSize:10, color:"#aaa"}}>Owner: {acc.owner}</div>
@@ -376,25 +392,19 @@ export default function Page() {
                           </div>
                       </div>
                   ))}
-
-                  {/* Empty State */}
+                  
                   {marketTab === 'items' && titipanItems.length === 0 && <div style={{textAlign:"center", color:"#777", padding:20}}>Belum ada titipan item.</div>}
                   {marketTab === 'accounts' && titipanAccounts.length === 0 && <div style={{textAlign:"center", color:"#777", padding:20}}>Belum ada titipan akun.</div>}
               </div>
 
-              {/* Floating Action Button (FAB) Inside Modal */}
               <div style={styles.fab} onClick={() => setTitipMenuOpen(!titipMenuOpen)}>
                   {titipMenuOpen ? "✕" : "+"}
               </div>
 
               {titipMenuOpen && (
                   <div style={styles.fabMenu}>
-                      <button onClick={()=>titipJualWA('account')} style={{padding: "10px 20px", borderRadius: 20, border:"none", background: "#fff", color:"#333", fontWeight:"bold", boxShadow:"0 4px 10px rgba(0,0,0,0.3)", display:"flex", alignItems:"center", gap: 8}}>
-                          👤 Titip Akun
-                      </button>
-                      <button onClick={()=>titipJualWA('item')} style={{padding: "10px 20px", borderRadius: 20, border:"none", background: "#fff", color:"#333", fontWeight:"bold", boxShadow:"0 4px 10px rgba(0,0,0,0.3)", display:"flex", alignItems:"center", gap: 8}}>
-                          ⚔️ Titip Item
-                      </button>
+                      <button onClick={()=>titipJualWA('account')} style={{padding: "10px 20px", borderRadius: 20, border:"none", background: "#fff", color:"#333", fontWeight:"bold", boxShadow:"0 4px 10px rgba(0,0,0,0.3)", display:"flex", alignItems:"center", gap: 8}}>👤 Titip Akun</button>
+                      <button onClick={()=>titipJualWA('item')} style={{padding: "10px 20px", borderRadius: 20, border:"none", background: "#fff", color:"#333", fontWeight:"bold", boxShadow:"0 4px 10px rgba(0,0,0,0.3)", display:"flex", alignItems:"center", gap: 8}}>⚔️ Titip Item</button>
                   </div>
               )}
           </div>
@@ -424,13 +434,8 @@ export default function Page() {
             <img src="/logo.png" height={36} alt="Logo" />
         </div>
         <div style={{display:"flex", alignItems:"center", gap: 15}}>
-             {/* ICON MARKET BARU */}
-            <div style={{cursor:"pointer", fontSize: 22}} onClick={() => setMarketOpen(true)}>
-                🏪
-            </div>
-            <div style={{cursor:"pointer", fontSize: 20}} onClick={toggleTheme}>
-                {darkMode ? "☀️" : "🌙"}
-            </div>
+            <div style={{cursor:"pointer", fontSize: 22}} onClick={() => setMarketOpen(true)}>🏪</div>
+            <div style={{cursor:"pointer", fontSize: 20}} onClick={toggleTheme}>{darkMode ? "☀️" : "🌙"}</div>
             <div style={styles.cartIcon} onClick={() => setCartOpen(true)}>
                 🛒
                 {cart.length > 0 && <span style={styles.cartBadge}>{totalQty}</span>}
@@ -507,7 +512,11 @@ export default function Page() {
           {filteredItems.map((item, idx) => (
             <div key={idx} style={styles.card}>
               <div style={{fontWeight: "bold", fontSize: 16, color: "#FFD700"}}>{item.nama}</div>
-              <div style={{fontSize: 12, color: item.status === 'Full' ? 'green' : item.status === 'Kosong' ? 'red' : 'orange'}}>{item.status}</div>
+              
+              {/* STATUS (DIPERBAIKI DENGAN FUNGSI statusLabel) */}
+              <div style={{fontSize: 12, color: item.status?.toLowerCase() === 'full' ? '#4caf50' : item.status?.toLowerCase() === 'kosong' ? '#f44336' : '#ff9800'}}>
+                  {statusLabel(item.status)}
+              </div>
               
               <div style={{marginTop: "auto"}}>
                  {item.buy > 0 && (
@@ -526,10 +535,10 @@ export default function Page() {
         </div>
       </main>
 
-      {/* RENDER MARKET MODAL JIKA OPEN */}
+      {/* RENDER MARKET MODAL */}
       {marketOpen && <MarketModal />}
 
-      {/* CART MODAL (EXISTING) */}
+      {/* CART MODAL */}
       {cartOpen && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", zIndex: 300, display: "flex", justifyContent: "end" }}>
            <div style={{ width: "85%", maxWidth: 400, background: theme.modalBg, height: "100%", padding: 20, overflowY: "auto", borderLeft: theme.border }}>
