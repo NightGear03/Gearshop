@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 
-// URL ROBOT ADMIN (APPS SCRIPT)
-const AUCTION_API = "https://script.google.com/macros/s/AKfycbxmaYljbsb8Xj_z2Zl1eWQNXJo2PEESj0TriYwiasWqXIEB3rwF2wJxVAsA6qsqkVjR/exec";
+// URL ROBOT ADMIN (NEW UPDATED)
+const AUCTION_API = "https://script.google.com/macros/s/AKfycbyifjqzDNnA1-L5xiDej379mUo6AlLUvY_VLXja7VDmQkipxNGzFgWaenWetUsH-d0C/exec";
 
 export default function Page() {
   /* ===== STATE DATA STORE ===== */
@@ -20,13 +20,14 @@ export default function Page() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [wishlist, setWishlist] = useState([]);
   const [ign, setIgn] = useState("");
-  const [waNumber, setWaNumber] = useState(""); // State baru buat No WA bidder
+  const [waNumber, setWaNumber] = useState(""); 
 
   /* ===== STATE AUCTION (LELANG) ===== */
   const [auctionData, setAuctionData] = useState(null);
   const [bidAmount, setBidAmount] = useState("");
   const [bidLoading, setBidLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState("Loading...");
+  const [isAuctionExpanded, setIsAuctionExpanded] = useState(false); // Default Nutup (Minibar)
 
   /* ===== STATE DARK MODE & STORE STATUS ===== */
   const [darkMode, setDarkMode] = useState(true);
@@ -108,8 +109,8 @@ export default function Page() {
 
   /* ===== LOAD DATA AUCTION (POLLING) ===== */
   useEffect(() => {
-    fetchAuction(); // Load pertama kali
-    const interval = setInterval(fetchAuction, 5000); // Refresh tiap 5 detik
+    fetchAuction(); 
+    const interval = setInterval(fetchAuction, 5000); 
     return () => clearInterval(interval);
   }, []);
 
@@ -162,8 +163,6 @@ export default function Page() {
 
     setBidLoading(true);
     try {
-        // Pake 'no-cors' di fetch biasa agak tricky buat baca response,
-        // Kita pake text/plain biar ga kena preflight OPTIONS cors
         const payload = JSON.stringify({
             action: action,
             bid: amount,
@@ -177,10 +176,8 @@ export default function Page() {
             headers: { "Content-Type": "text/plain" }
         });
 
-        // Kita asumsi sukses (karena no-cors susah baca error detail di client side simple)
-        // Langsung refresh data
         setBidAmount("");
-        setTimeout(fetchAuction, 1000); 
+        setTimeout(fetchAuction, 1500); 
         alert("Permintaan dikirim! Tunggu refresh...");
 
     } catch (error) {
@@ -330,70 +327,164 @@ export default function Page() {
 
       <main style={{ padding: 16 }}>
         
-        {/* === SECTION 1: LIVE AUCTION (NEW!) === */}
-        {auctionData && !auctionData.isEnded && (
-            <div style={{ marginBottom: 24, padding: 20, background: theme.auctionBg, border: theme.auctionBorder, borderRadius: 12, boxShadow: "0 0 20px rgba(255, 0, 0, 0.2)" }}>
-                <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom: 15}}>
-                    <h2 style={{margin:0, color:"#FF4444", fontSize: 20}}>🔨 LIVE LELANG</h2>
-                    <div style={{background:"red", color:"white", padding:"4px 8px", borderRadius:4, fontSize:12, fontWeight:"bold", animation:"pulse 1s infinite"}}>LIVE</div>
+        {/* === SECTION 1: LIVE AUCTION (STICKY & EXPANDABLE) === */}
+        {auctionData && auctionData.status !== "empty" && (
+        <div style={{ 
+            marginBottom: 24, 
+            borderRadius: 12, 
+            overflow: "hidden", 
+            boxShadow: "0 4px 15px rgba(255, 68, 68, 0.4)",
+            border: "2px solid #FF4444",
+            background: theme.auctionBg,
+            transition: "all 0.3s ease"
+        }}>
+            
+            {/* HEADER STICKY (Compact View) */}
+            <div 
+            onClick={() => setIsAuctionExpanded(!isAuctionExpanded)}
+            style={{
+                padding: "12px 16px",
+                background: "linear-gradient(90deg, #aa0000 0%, #cc0000 100%)",
+                color: "white",
+                cursor: "pointer",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+            }}
+            >
+            <div style={{display:"flex", alignItems:"center", gap: 10}}>
+                <span style={{fontSize: 18}}>🔨</span>
+                <div>
+                <div style={{fontSize: 12, opacity: 0.9, fontWeight:"bold"}}>
+                    LIVE AUCTION {isAuctionExpanded ? "▼" : "▶"}
                 </div>
-
-                <div style={{textAlign:"center", marginBottom: 20}}>
-                    <div style={{fontSize:14, color: theme.subText}}>Item yang dilelang:</div>
-                    <strong style={{fontSize: 24, display:"block", margin:"5px 0"}}>{auctionData.item}</strong>
-                    <div style={{fontSize: 18, fontWeight:"bold", color:"#FF4444", border:"1px solid #FF4444", display:"inline-block", padding:"4px 12px", borderRadius: 8, marginTop: 5}}>
-                        ⏱️ {timeLeft}
+                {!isAuctionExpanded && (
+                    <div style={{fontSize: 14, fontWeight: "bold", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "180px"}}>
+                    {auctionData.item} | {formatGold(auctionData.currentBid)}
                     </div>
-                </div>
-
-                <div style={{background: theme.cardBg, padding: 15, borderRadius: 8, marginBottom: 15, border: theme.cardBorder}}>
-                    <div style={{display:"flex", justifyContent:"space-between", borderBottom: `1px solid ${darkMode?"#444":"#eee"}`, paddingBottom: 10, marginBottom: 10}}>
-                        <span style={{color: theme.subText}}>Harga Tertinggi:</span>
-                        <span style={{fontSize:18, fontWeight:"bold", color:"#25D366"}}>{formatGold(auctionData.currentBid)}</span>
-                    </div>
-                    <div style={{display:"flex", justifyContent:"space-between"}}>
-                        <span style={{color: theme.subText}}>Sultan (Leader):</span>
-                        <span style={{fontWeight:"bold", color:"#3C6EE2"}}>{auctionData.bidderName || "Belum ada"}</span>
-                    </div>
-                </div>
-
-                {/* FORM BIDDING */}
-                <div style={{display:"flex", gap: 10, flexDirection: "column"}}>
-                    <div style={{display:"flex", gap: 5}}>
-                        <input 
-                            type="number" 
-                            placeholder={`Minimal: ${auctionData.currentBid + auctionData.increment}`}
-                            value={bidAmount}
-                            onChange={e => setBidAmount(e.target.value)}
-                            style={{...styles.input, marginBottom:0, flex:1, background: theme.inputBg, color:theme.text, border:theme.inputBorder}}
-                        />
-                        <button 
-                            onClick={() => handleBid("BID")} 
-                            disabled={bidLoading}
-                            style={{background: "#FF4444", color:"white", border:"none", borderRadius:8, padding:"0 20px", fontWeight:"bold", cursor: "pointer"}}
-                        >
-                            {bidLoading ? "..." : "BID!"}
-                        </button>
-                    </div>
-                    
-                    <button 
-                        onClick={() => handleBid("BIN")}
-                        disabled={bidLoading}
-                        style={{width:"100%", background:"#B8860B", color:"white", border:"none", padding:12, borderRadius:8, fontWeight:"bold", cursor:"pointer"}}
-                    >
-                         ⚡ BELI LANGSUNG (BIN): {formatGold(auctionData.binPrice)}
-                    </button>
-                    
-                    {(!ign || !waNumber) && <div style={{fontSize:12, color:"orange", textAlign:"center", marginTop:5}}>*Isi IGN & WA di menu Keranjang dulu buat ngebid!</div>}
+                )}
                 </div>
             </div>
-        )}
 
-        {auctionData && auctionData.isEnded && (
-             <div style={{ marginBottom: 24, padding: 15, background: darkMode?"#222":"#ddd", borderRadius: 12, textAlign:"center", opacity: 0.8 }}>
-                <h3>🔒 Lelang Selesai</h3>
-                <p>Pemenang: <strong>{auctionData.bidderName}</strong> di harga {formatGold(auctionData.currentBid)}</p>
-             </div>
+            <div style={{textAlign: "right"}}>
+                {/* STATUS BADGE */}
+                {!auctionData.isEnded ? (
+                    <div style={{background:"red", padding:"2px 6px", borderRadius:4, fontSize:10, fontWeight:"bold", display:"inline-block", marginBottom: 2, animation:"pulse 1s infinite"}}>LIVE</div>
+                ) : (
+                    <div style={{background:"#555", padding:"2px 6px", borderRadius:4, fontSize:10, fontWeight:"bold", display:"inline-block", marginBottom: 2}}>SELESAI</div>
+                )}
+                <div style={{fontSize: 12, fontWeight: "bold", fontFamily: "monospace"}}>
+                    {timeLeft}
+                </div>
+            </div>
+            </div>
+
+            {/* BODY (EXPANDED VIEW) */}
+            {isAuctionExpanded && (
+            <div style={{ padding: 16 }}>
+                
+                {/* INFO UTAMA */}
+                <div style={{textAlign:"center", marginBottom: 20}}>
+                    <strong style={{fontSize: 20, display:"block", marginBottom: 5}}>{auctionData.item}</strong>
+                    
+                    {/* HARGA BESAR */}
+                    <div style={{fontSize: 28, fontWeight:"bold", color: !auctionData.isEnded ? "#25D366" : "#888", textShadow: "0 0 10px rgba(37, 211, 102, 0.3)"}}>
+                        {formatGold(auctionData.currentBid)}
+                    </div>
+
+                    {/* LEADERBOARD TOP 3 (UPDATED) */}
+                    {auctionData.leaderboard && (
+                    <div style={{
+                        marginTop: 15, 
+                        background: "rgba(0,0,0,0.2)", 
+                        borderRadius: 8, 
+                        padding: "10px",
+                        textAlign: "left"
+                    }}>
+                        <div style={{fontSize: 12, color: theme.subText, marginBottom: 5, textAlign:"center"}}>🏆 TOP BIDDERS</div>
+                        
+                        {/* JUARA 1 */}
+                        <div style={{display:"flex", justifyContent:"space-between", padding:"4px 0", borderBottom: "1px solid rgba(255,255,255,0.1)"}}>
+                            <span style={{color: "#FFD700", fontWeight:"bold"}}>🥇 1. {auctionData.leaderboard[0].name}</span>
+                            <span style={{fontWeight:"bold"}}>{formatGold(auctionData.leaderboard[0].bid)}</span>
+                        </div>
+                        
+                        {/* JUARA 2 */}
+                        {auctionData.leaderboard[1] && auctionData.leaderboard[1].bid > 0 && (
+                        <div style={{display:"flex", justifyContent:"space-between", padding:"4px 0", borderBottom: "1px solid rgba(255,255,255,0.1)"}}>
+                            <span style={{color: "#C0C0C0"}}>🥈 2. {auctionData.leaderboard[1].name}</span>
+                            <span style={{fontSize: 13}}>{formatGold(auctionData.leaderboard[1].bid)}</span>
+                        </div>
+                        )}
+
+                        {/* JUARA 3 */}
+                        {auctionData.leaderboard[2] && auctionData.leaderboard[2].bid > 0 && (
+                        <div style={{display:"flex", justifyContent:"space-between", padding:"4px 0"}}>
+                            <span style={{color: "#CD7F32"}}>🥉 3. {auctionData.leaderboard[2].name}</span>
+                            <span style={{fontSize: 13}}>{formatGold(auctionData.leaderboard[2].bid)}</span>
+                        </div>
+                        )}
+                    </div>
+                    )}
+                </div>
+
+                {/* INPUT BIDDING (HILANG KALAU LELANG SELESAI) */}
+                {!auctionData.isEnded && (
+                    <div style={{display:"flex", gap: 10, flexDirection: "column", marginTop: 15}}>
+                        <div style={{display:"flex", gap: 5}}>
+                            <input 
+                                type="number" 
+                                placeholder={`Min: ${auctionData.currentBid + auctionData.increment}`}
+                                value={bidAmount}
+                                onChange={e => setBidAmount(e.target.value)}
+                                style={{...styles.input, marginBottom:0, flex:1, background: theme.inputBg, color:theme.text, border:theme.inputBorder}}
+                            />
+                            <button 
+                                onClick={() => handleBid("BID")} 
+                                disabled={bidLoading}
+                                style={{background: "#FF4444", color:"white", border:"none", borderRadius:8, padding:"0 20px", fontWeight:"bold", cursor: "pointer"}}
+                            >
+                                {bidLoading ? "..." : "BID"}
+                            </button>
+                        </div>
+                        
+                        <button 
+                            onClick={() => handleBid("BIN")}
+                            disabled={bidLoading}
+                            style={{
+                                width:"100%", 
+                                background:"linear-gradient(180deg, #B8860B 0%, #8B6508 100%)", 
+                                color:"white", 
+                                border:"1px solid #FFD700", 
+                                padding: "12px", 
+                                borderRadius:8, 
+                                fontWeight:"bold", 
+                                cursor:"pointer",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                boxShadow: "0 4px 6px rgba(0,0,0,0.3)"
+                            }}
+                        >
+                            <span>⚡ BELI LANGSUNG (BIN)</span>
+                            <span style={{background:"rgba(0,0,0,0.2)", padding:"2px 8px", borderRadius:4}}>
+                                {auctionData.binPrice ? auctionData.binPrice.toLocaleString('id-ID') : 0} 🪙
+                            </span>
+                        </button>
+                        
+                        {(!ign || !waNumber) && <div style={{fontSize:11, color:"orange", textAlign:"center", marginTop:8, fontStyle:"italic"}}>*Isi IGN & WA di Keranjang dulu buat ikutan!</div>}
+                    </div>
+                )}
+
+                {auctionData.isEnded && (
+                    <div style={{textAlign:"center", marginTop: 10, color: "#25D366", fontWeight:"bold"}}>
+                        🎉 Pemenang: {auctionData.leaderboard ? auctionData.leaderboard[0].name : "-"}
+                    </div>
+                )}
+
+            </div>
+            )}
+        </div>
         )}
         
         {/* === SECTION 2: HERO ITEMS (BANNER) === */}
@@ -600,14 +691,4 @@ export default function Page() {
 /* ===== STATIC STYLES ===== */
 const styles = {
     header: { background: "#3C6EE2", padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "#fff", position: "sticky", top: 0, zIndex: 10 },
-    cartIcon: { position: "relative", cursor: "pointer", fontSize: 24 },
-    cartBadge: { position: "absolute", top: -6, right: -6, background: "red", color: "#fff", borderRadius: "50%", padding: "2px 6px", fontSize: 12, fontWeight: "bold" },
-    input: { width: "100%", padding: 10, marginBottom: 12, borderRadius: 8, outline: "none" },
-    card: { borderRadius: 10, padding: 14, marginBottom: 12, boxShadow: "0 2px 5px rgba(0,0,0,0.05)" },
-    promo: { background: "#FFD700", padding: "2px 6px", borderRadius: 4, fontSize: 12, fontWeight: "bold", display: "inline-block", margin: "6px 0", color: "#000" },
-    btn: { flex: 1, border: "none", borderRadius: 8, cursor: "pointer", textAlign: "center", padding: "10px 0" },
-    cartPanel: { position: "fixed", top: 0, right: 0, width: "320px", maxWidth: "85%", height: "100%", padding: "20px", boxShadow: "-2px 0 10px rgba(0,0,0,0.3)", transition: "0.3s", zIndex: 999 },
-    backdrop: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 998 },
-    modalWrap: { position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.6)", zIndex: 1000, padding: 20 },
-    modal: { padding: 24, borderRadius: 12, width: "100%", maxWidth: "320px", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }
-};
+    cartIcon: { position: "relative", cursor: "pointer", fontSize:
