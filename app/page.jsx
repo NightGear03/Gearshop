@@ -29,7 +29,7 @@ export default function Page() {
   /* ===== STATE CART & USER & CONFIRMATION ===== */
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false); // State baru buat Konfirmasi
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [ign, setIgn] = useState("");
   const [waNumber, setWaNumber] = useState(""); 
 
@@ -114,19 +114,25 @@ export default function Page() {
     setItems(realItems);
   };
 
-  // -- Parser Titipan Items --
+  // -- Parser Titipan Items (UPDATED: Kolom G/Index 6 untuk WA) --
   const parseTitipanItems = (text) => {
     const rows = text.split(/\r?\n/).slice(1);
     const data = rows.filter(r => r.trim() !== "").map(r => {
         const c = r.split(","); 
         return {
-            nama: c[0]?.trim(), harga: c[1]?.trim(), owner: c[2]?.trim(), status: c[3]?.trim(), tipeHarga: c[4]?.trim(), img: c[5]?.trim() || null
+            nama: c[0]?.trim(), 
+            harga: c[1]?.trim(), 
+            owner: c[2]?.trim(), 
+            status: c[3]?.trim(), 
+            tipeHarga: c[4]?.trim(), 
+            img: c[5]?.trim() || null,
+            waOwner: c[6]?.trim() || null // Kolom G
         };
     });
     setTitipanItems(data);
   };
 
-  // -- Parser Titipan Accounts --
+  // -- Parser Titipan Accounts (UPDATED: Kolom N/Index 13 untuk WA) --
   const parseTitipanAccounts = (text) => {
     const rows = text.split(/\r?\n/).slice(1);
     const data = rows.filter(r => r.trim() !== "").map(r => {
@@ -134,12 +140,13 @@ export default function Page() {
         return {
             nama: c[0]?.trim(), level: c[1]?.trim(), melee: c[2]?.trim(), dist: c[3]?.trim(), magic: c[4]?.trim(), def: c[5]?.trim(),
             setInfo: c[6]?.trim(), owner: c[7]?.trim(), status: c[8]?.trim(), tipeHarga: c[9]?.trim(), wajibMM: c[10]?.trim(),
-            harga: c[11]?.trim(), img: c[12]?.trim() || null
+            harga: c[11]?.trim(), img: c[12]?.trim() || null,
+            waOwner: c[13]?.trim() || null // Kolom N
         };
     });
     setTitipanAccounts(data);
   };
-    /* ===== LOAD DATA AUCTION ===== */
+      /* ===== LOAD DATA AUCTION ===== */
   useEffect(() => {
     fetchAuction(); 
     const interval = setInterval(fetchAuction, 5000);
@@ -171,6 +178,15 @@ export default function Page() {
         setAuctionData(data);
     } catch (error) { console.error("Err lelang", error); }
   }
+
+  /* ===== HELPERS BARU (FORMAT WA) ===== */
+  const formatWaNumber = (num) => {
+    if (!num) return null;
+    let clean = num.replace(/\D/g, ''); // Hapus karakter non-angka
+    if (clean.startsWith('0')) return '62' + clean.slice(1);
+    if (clean.startsWith('8')) return '62' + clean;
+    return clean;
+  };
 
   /* ===== ACTION HANDLERS ===== */
   const handleBid = async (action) => {
@@ -205,7 +221,7 @@ export default function Page() {
     const newMode = !darkMode; setDarkMode(newMode); localStorage.setItem("gearShopTheme", newMode ? "dark" : "light");
   };
 
-  /* ===== HELPERS ===== */
+  /* ===== HELPERS FORMATTING ===== */
   const formatGold = (val) => <span style={{ fontWeight: "bold", color: "#B8860B" }}>{val ? val.toLocaleString('id-ID') : 0} 🪙</span>;
   
   const statusLabel = s => {
@@ -232,15 +248,13 @@ export default function Page() {
   const totalQty = cart.reduce((s, c) => s + c.qty, 0);
   const totalPrice = cart.reduce((s, c) => s + (c.mode === "buy" ? c.buy : c.sell) * c.qty, 0);
 
-  // 1. Tombol klik di Keranjang -> Buka Konfirmasi
   const handleCheckoutClick = () => {
     if (!cart.length) return;
     if (!ign) { alert("Mohon isi IGN (Nickname Game) dulu ya!"); return; }
-    setCartOpen(false); // Tutup keranjang
-    setConfirmOpen(true); // Buka konfirmasi
+    setCartOpen(false);
+    setConfirmOpen(true);
   };
 
-  // 2. Tombol "Lanjut WA" di Modal Konfirmasi -> Kirim WA
   const processToWA = () => {
     const itemText = cart.map(c => {
         const kategoriStr = c.kategori?.toLowerCase().includes("diamond") ? "" : ` [${c.kategori}]`;
@@ -248,15 +262,24 @@ export default function Page() {
     }).join("%0A");
     const message = `Halo,%20saya%20*${encodeURIComponent(ign)}*%20mau%20order:%0A${itemText}%0A%0ATotal:%20${totalPrice.toLocaleString('id-ID')}%20Gold`;
     window.open(`https://wa.me/6283101456267?text=${message}`, "_blank");
-    setConfirmOpen(false); // Tutup konfirmasi
+    setConfirmOpen(false);
   };
 
   const contactAdmin = () => window.open("https://wa.me/6283101456267?text=Halo%20Admin,%20mau%20tanya-tanya%20dong.", "_blank");
+
+  // === UPDATED LOGIC CONTACT OWNER ===
   const contactOwner = (item, type) => {
-    const text = type === 'account' ? `Halo Admin, saya minat akun titipan: *${item.nama}* (Owner: ${item.owner}).` : `Halo Admin, saya minat barang titipan: *${item.nama}* (Owner: ${item.owner}).`;
-    window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
+    // Cek ada nomor penitip gak? Kalau ada format dulu, kalau kosong pake nomor Admin
+    const targetWA = item.waOwner ? formatWaNumber(item.waOwner) : "6283101456267";
+    
+    const text = type === 'account' 
+        ? `Halo, saya minat akun titipan: *${item.nama}* (Owner: ${item.owner}).` 
+        : `Halo, saya minat barang titipan: *${item.nama}* (Owner: ${item.owner}).`;
+    
+    window.open(`https://wa.me/${targetWA}?text=${encodeURIComponent(text)}`, "_blank");
   };
-    const titipJualWA = (type) => {
+
+  const titipJualWA = (type) => {
       let text = type === 'item' 
         ? `Halo min, mau nitip jual item dong.
 Nama item :
@@ -283,8 +306,7 @@ Gambar akun : (jika ada)`;
 
   const categories = ["All", ...new Set(items.map(i => i.kategori))];
   const filteredItems = items.filter(i => (i.nama.toLowerCase().includes(search.toLowerCase())) && (category === "All" || i.kategori === category)).sort((a, b) => sort === "buy-asc" ? a.buy - b.buy : sort === "buy-desc" ? b.buy - a.buy : 0);
-
-  const theme = {
+        const theme = {
     bg: darkMode ? "#121212" : "#f5f5f5", text: darkMode ? "#e0e0e0" : "#333", cardBg: darkMode ? "#1e1e1e" : "#fff", border: darkMode ? "1px solid #333" : "1px solid #ddd", modalBg: darkMode ? "#222" : "#fff", accent: "#B8860B", inputBg: darkMode ? "#2c2c2c" : "#fff", subText: darkMode ? "#aaa" : "#666", auctionBg: darkMode ? "linear-gradient(135deg, #2c0000 0%, #4a0000 100%)" : "linear-gradient(135deg, #fff0f0 0%, #ffe0e0 100%)",
   };
 
@@ -362,12 +384,12 @@ Gambar akun : (jika ada)`;
       <main style={{ padding: 16 }}>
         {auctionData && auctionData.status !== "empty" && (<div style={{ marginBottom: 24, borderRadius: 12, overflow: "hidden", boxShadow: "0 4px 20px rgba(255, 68, 68, 0.5)", border: "2px solid #FF4444", background: theme.auctionBg, transition: "all 0.3s ease" }}><div onClick={() => setIsAuctionExpanded(!isAuctionExpanded)} style={{ padding: "12px 16px", background: "linear-gradient(90deg, #880000 0%, #aa0000 100%)", color: "white", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{display:"flex", alignItems:"center", gap: 12}}><div style={{fontSize: 20}}>🔨</div><div><div style={{fontSize: 11, opacity: 0.8, fontWeight:"bold", textTransform:"uppercase"}}>Live Auction {isAuctionExpanded ? "▼" : "▶"}</div>{!isAuctionExpanded && <div style={{fontSize: 15, fontWeight: "bold", color: "#FFD700"}}>{auctionData.item}</div>}</div></div><div style={{textAlign: "right"}}><div style={{fontSize: 14, fontWeight: "bold", fontFamily: "monospace", color: "#fff"}}>{timeLeft}</div></div></div>{isAuctionExpanded && (<div style={{ padding: 16, textAlign:"center" }}><strong style={{fontSize: 22, display:"block", marginBottom: 5, color: theme.text}}>{auctionData.item}</strong><div style={{fontSize: 32, fontWeight:"bold", color: "#25D366", textShadow: "0 0 15px rgba(37, 211, 102, 0.4)", margin: "5px 0"}}>{formatGold(auctionData.currentBid)}</div>{auctionData.leaderboard && (<div style={{ marginTop: 15, background: "rgba(0,0,0,0.3)", borderRadius: 12, padding: "12px", textAlign: "left", border: "1px solid rgba(255,255,255,0.1)" }}>{auctionData.leaderboard.slice(0,3).map((l, i) => (<div key={i} style={{display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom: "1px solid rgba(255,255,255,0.1)"}}><span style={{color: i===0?"#FFD700":i===1?"#C0C0C0":"#CD7F32", fontWeight:"bold"}}>{i===0?"🥇":i===1?"🥈":"🥉"} {l.name}</span><span style={{color:"#25D366"}}>{formatGold(l.bid)}</span></div>))}</div>)}{!auctionData.isEnded && (<div style={{display:"flex", gap: 8, marginTop: 20}}><input type="number" placeholder="Nominal Bid..." value={bidAmount} onChange={e => setBidAmount(e.target.value)} style={{...styles.input, flex: 1, marginBottom: 0}} /><button onClick={() => handleBid("BID")} disabled={bidLoading} style={{background: "#FF4444", color: "white", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold"}}>BID</button>{auctionData.currentBid < auctionData.binPrice ? (<button onClick={() => handleBid("BIN")} disabled={bidLoading} style={{background: "#FFD700", color: "#000", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold"}}>BIN</button>) : (<button disabled style={{background: "#555", color: "#ccc", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold", cursor: "not-allowed"}}>BIN CLOSED</button>)}</div>)}</div>)}</div>)}
 
-        {/* HERO ITEM - FIX: Format Harga Gold + Icon */}
+        {/* HERO ITEM */}
         {heroItems.length > 0 && (<div style={{ marginBottom: 20 }}><h3 style={{ marginLeft: 8, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>🔥 Hot Items</h3><div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 10, paddingLeft: 8 }}>{heroItems.map((item, idx) => { const status = item.status?.toLowerCase(); const canBuy = (status === 'ready' || status === 'full') && item.buy > 0; return (<div key={idx} style={{ minWidth: 140, background: theme.cardBg, border: theme.border, borderRadius: 8, padding: 10, display: "flex", flexDirection: "column", gap: 5 }}><div style={{fontWeight: "bold", fontSize: 14, color: "#FFD700", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"}}>{item.nama}</div><div style={{fontSize: 10, color: theme.subText, marginTop: -3}}>({item.targetKategori || item.kategori})</div><div style={{fontSize: 11, color: status === 'full' ? '#4caf50' : status === 'kosong' ? '#f44336' : '#ff9800'}}>{statusLabel(item.status)}</div><div style={{marginTop: "auto"}}><button onClick={() => canBuy && addToCart(item, 'buy')} disabled={!canBuy} style={{...styles.btn, fontSize: 11, width: "100%", background: canBuy ? theme.accent : "#555", opacity: canBuy ? 1 : 0.7, cursor: canBuy ? "pointer" : "not-allowed"}}>{canBuy ? <span>Beli {item.buy.toLocaleString('id-ID')} 🪙</span> : (status === 'kosong' ? "Stok Habis" : "N/A")}</button></div></div>)})}</div></div>)}
 
         {/* FILTER & SEARCH */}<div style={{ display: "flex", gap: 10, marginBottom: 20, overflowX: "auto", paddingBottom: 5 }}>{categories.map(c => (<button key={c} onClick={() => setCategory(c)} style={{ padding: "8px 16px", borderRadius: 20, border: "none", background: category === c ? theme.accent : theme.cardBg, color: category === c ? "#fff" : theme.text, whiteSpace: "nowrap", cursor: "pointer", border: category === c ? "none" : theme.border }}>{c}</button>))}</div><input placeholder="Cari item..." value={search} onChange={e => setSearch(e.target.value)} style={styles.input} />
 
-        {/* LIST ITEM TOKO - FIX: LOGIC TOMBOL WARNA-WARNI + ICON GOLD */}
+        {/* LIST ITEM TOKO */}
         <div style={styles.grid}>
           {filteredItems.map((item, idx) => {
             const status = item.status?.toLowerCase();
@@ -392,7 +414,7 @@ Gambar akun : (jika ada)`;
 
       {marketOpen && <MarketModal />}
 
-      {/* CART MODAL - TOMBOL CHECKOUT DIGANTI KE CONFIRMATION MODAL */}
+      {/* CART MODAL */}
       {cartOpen && (
         <div onClick={(e) => { if (e.target === e.currentTarget) setCartOpen(false); }} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", zIndex: 300, display: "flex", justifyContent: "end" }}>
            <div style={{ width: "70%", maxWidth: 320, background: theme.modalBg, height: "100%", padding: 20, overflowY: "auto", borderLeft: theme.border, cursor: "default" }}>
@@ -414,7 +436,7 @@ Gambar akun : (jika ada)`;
         </div>
       )}
 
-      {/* NEW: CONFIRMATION MODAL */}
+      {/* CONFIRMATION MODAL */}
       {confirmOpen && (
           <div onClick={(e) => { if (e.target === e.currentTarget) setConfirmOpen(false); }} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
               <div style={{ background: theme.cardBg, width: "100%", maxWidth: 400, borderRadius: 12, padding: 20, border: "1px solid #555" }}>
@@ -440,5 +462,4 @@ Gambar akun : (jika ada)`;
       )}
     </div>
   );
-        }
-      
+}
