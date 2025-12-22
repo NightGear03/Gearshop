@@ -633,9 +633,7 @@ export default function Page() {
                     )}
                 </div>
 
-                <button onClick={handleCalculate} style={{width: "100%", padding: 12, borderRadius: 8, background: "linear-gradient(90deg, #25D366 0%, #128C7E 100%)", color: "white", fontWeight: "bold", border: "none", fontSize: 16, boxShadow: "0 4px 15px rgba(37, 211, 102, 0.3)"}}>
-                    HITUNG SEKARANG 🚀
-                </button>
+              
 
                 {/* RESULT SECTION */}
                 {calcResult && (
