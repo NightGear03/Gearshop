@@ -181,7 +181,7 @@ export default function Page() {
         const data = await res.json();
         setAuctionData(data);
     } catch (error) { console.error("Err lelang", error); }
-                                   }
+                                  
     const formatWaNumber = (num) => {
     if (!num) return null;
     let clean = num.replace(/\D/g, ''); 
@@ -257,7 +257,7 @@ export default function Page() {
       const text = `Halo Admin, saya *${ign}* (WA: ${cleanWA}).\nSaya mau *BIN (Buy It Now)* item: *${auctionData.item}*.\n\nMohon kirimkan *Kode Konfirmasi BIN*-nya. Saya siap transaksi.`;
       window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
   };
-       togg  const toggleTheme = () => {
+        const toggleTheme = () => {
     const newMode = !darkMode; setDarkMode(newMode); localStorage.setItem("gearShopTheme", newMode ? "dark" : "light");
   };
   const formatGold = (val) => <span style={{ fontWeight: "bold", color: "#B8860B" }}>{val ? val.toLocaleString('id-ID') : 0} 🪙</span>;
