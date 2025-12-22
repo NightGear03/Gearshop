@@ -272,29 +272,38 @@ export default function Page() {
       const text = `Halo Admin, saya *${ign}* (WA: ${cleanWA}).\nSaya mau *BIN (Buy It Now)* item: *${auctionData.item}*.\n\nMohon kirimkan *Kode Konfirmasi BIN*-nya.\nSaya siap transaksi.`;
       window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
   };
-        /* ===== LOGIC CALCULATOR (BRAIN - FITUR BARU) ===== */
-  const handleCalculate = () => {
-    const lvl = parseInt(calcInput.lvl);
-    const stat = parseInt(calcInput.stat);
-    const extra = parseInt(calcInput.extra) || 0;
-    const wpn = parseInt(calcInput.wpn);
-    
-    if (!lvl || !stat) return;
+          /* ===== LOGIC CALCULATOR (REALTIME & JUJUR) ===== */
+  
+  // 1. Auto-Hitung setiap input berubah (Gak perlu pencet tombol lagi)
+  useEffect(() => {
+    handleCalculate();
+  }, [calcInput]); 
 
-    // 1. Hitung Effective Stat (AFK vs Ptrain)
-    // Rumus Riset: Ptrain Melee = Stat * 1.2 | Ptrain Magic = Stat * 1.35
+  const handleCalculate = () => {
+    // Validasi input: Kalau kosong dianggap 0
+    const lvl = parseInt(calcInput.lvl) || 0;
+    const stat = parseInt(calcInput.stat) || 0;
+    const extra = parseInt(calcInput.extra) || 0;
+    const wpn = parseInt(calcInput.wpn) || 0;
+    
+    // Jangan hitung kalau data nol semua
+    if (lvl === 0 || stat === 0) {
+        setCalcResult(null);
+        return;
+    }
+
+    // 1. Hitung Effective Stat
     let effectiveStat = stat;
     if (calcInput.mode === 'ptrain') {
         effectiveStat = calcInput.magic ? (stat * 1.35) : (stat * 1.2);
     }
 
-    // 2. Hitung Total Power (Defense Penetration)
-    // Rumus Suci: Stat + Extra + Wpn + (Level / 2)
+    // 2. Hitung Total Power
     const powerScore = effectiveStat + extra + wpn + Math.floor(lvl / 2);
 
-    // 3. Database Monster (Hasil Riset 50 Sampel)
+    // 3. Database Monster (Start dari 14 = Stat 9 + Wpn 5)
     const MONSTER_DB = [
-      { name: "Rat (Lv.1)", min: 0 },
+      { name: "Rat (Lv.1)", min: 14 }, 
       { name: "Rat (Lv.3)", min: 22 },
       { name: "Crow (Lv.6)", min: 33 },
       { name: "Wolf (Lv.9)", min: 42 },
@@ -313,14 +322,26 @@ export default function Page() {
       { name: "Demon", min: 1400 }
     ];
 
-    // 4. Cari Target
+    // 4. Logic Pencarian Target
+    // KASUS KHUSUS: Kalau Power di bawah 14 (Belum kuat lawan Tikus Lv.1)
+    if (powerScore < 14) {
+        setCalcResult({
+            score: Math.floor(powerScore),
+            target: "❌ Belum Kuat", // Vonis Jujur
+            next: "Rat (Lv.1)",
+            need: Math.ceil(14 - powerScore) // Kasih tau kurang berapa stat lagi
+        });
+        return;
+    }
+
+    // KASUS NORMAL: Cari monster yang cocok
     let currentTarget = MONSTER_DB[0];
-    let nextTarget = MONSTER_DB[1];
+    let nextTarget = { name: "MAX LEVEL", min: powerScore };
 
     for (let i = 0; i < MONSTER_DB.length; i++) {
         if (powerScore >= MONSTER_DB[i].min) {
             currentTarget = MONSTER_DB[i];
-            nextTarget = MONSTER_DB[i+1] || { name: "MAX LEVEL", min: 9999 };
+            nextTarget = MONSTER_DB[i+1] || { name: "MAX LEVEL", min: powerScore };
         } else {
             break;
         }
@@ -330,9 +351,10 @@ export default function Page() {
         score: Math.floor(powerScore),
         target: currentTarget.name,
         next: nextTarget.name,
-        need: Math.ceil(nextTarget.min - powerScore) // Pembulatan ke atas biar aman
+        need: Math.max(0, Math.ceil(nextTarget.min - powerScore))
     });
   };
+
 
   /* ===== UI HELPERS & CART ===== */
   const toggleTheme = () => {
