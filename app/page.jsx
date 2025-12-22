@@ -31,18 +31,19 @@ export default function Page() {
   const [cartOpen, setCartOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [ign, setIgn] = useState("");
-  const [waNumber, setWaNumber] = useState(""); 
+  const [waNumber, setWaNumber] = useState("");
 
   /* ===== STATE AUCTION (LELANG) ===== */
   const [auctionData, setAuctionData] = useState(null);
   const [bidAmount, setBidAmount] = useState("");
   const [bidLoading, setBidLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState("Loading...");
-  const [isAuctionExpanded, setIsAuctionExpanded] = useState(false); 
+  const [isAuctionExpanded, setIsAuctionExpanded] = useState(false);
 
   /* ===== STATE DARK MODE & STORE STATUS ===== */
   const [darkMode, setDarkMode] = useState(true);
   const [isStoreOpen, setIsStoreOpen] = useState(true);
+  const [isMaintenance, setIsMaintenance] = useState(false); // State baru buat MT
 
   /* ===== LOAD ALL DATA ===== */
   useEffect(() => {
@@ -67,6 +68,13 @@ export default function Page() {
         if (savedWa) setWaNumber(savedWa);
         const savedTheme = localStorage.getItem("gearShopTheme");
         if (savedTheme) setDarkMode(savedTheme === "dark");
+        
+        // Cek Magic Link Admin (sekali jalan pas load)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('kunci') === "firman123") {
+            localStorage.setItem("gearshop_admin", "true");
+            alert("Mode Admin Aktif! Selamat bertugas.");
+        }
 
       } catch (err) {
         console.error("Fetch error:", err);
@@ -76,8 +84,7 @@ export default function Page() {
     }
     loadData();
   }, []);
-
-  // -- Parser Toko Utama --
+  // -- Parser Toko Utama (UPDATED: Logic MT) --
   const parseStoreData = (text) => {
     const rows = text.split(/\r?\n/).slice(1);
     const parsed = rows.filter(r => r.trim() !== "").map(r => {
@@ -98,41 +105,53 @@ export default function Page() {
       };
     });
 
+    // === LOGIC STATUS TOKO & MT ===
     const systemRow = parsed.find(item => item.kategori?.toUpperCase() === "#SYSTEM" && item.nama?.toUpperCase() === "STATUS_TOKO");
-    setIsStoreOpen(!(systemRow && systemRow.status?.toUpperCase() === "TUTUP"));
+    const statusToko = systemRow ? systemRow.status?.toUpperCase() : "BUKA";
+    const isAdmin = localStorage.getItem("gearshop_admin") === "true";
 
+    if (statusToko === "TUTUP") {
+        setIsStoreOpen(false);
+        setIsMaintenance(false);
+    } else if (statusToko === "MT") {
+        if (isAdmin) {
+            setIsStoreOpen(true);
+            setIsMaintenance(false);
+        } else {
+            setIsStoreOpen(false);
+            setIsMaintenance(true); // Aktifkan Layar Maintenance
+        }
+    } else {
+        setIsStoreOpen(true);
+        setIsMaintenance(false);
+    }
+
+    // Hero Logic
     const heroRows = parsed.filter(item => item.kategori === "#HERO");
     const realItems = parsed.filter(item => item.kategori !== "#SYSTEM" && item.kategori !== "#HERO");
-
     const matchedHeroes = [];
     heroRows.forEach(h => {
         const found = realItems.find(item => item.nama.toLowerCase() === h.nama.toLowerCase() && item.kategori.toLowerCase() === h.targetKategori?.toLowerCase());
         if (found) matchedHeroes.push(found);
     });
-    
     setHeroItems(matchedHeroes);
     setItems(realItems);
   };
 
-  // -- Parser Titipan Items (UPDATED: Kolom G/Index 6 untuk WA) --
+  // -- Parser Titipan Items --
   const parseTitipanItems = (text) => {
     const rows = text.split(/\r?\n/).slice(1);
     const data = rows.filter(r => r.trim() !== "").map(r => {
         const c = r.split(","); 
         return {
-            nama: c[0]?.trim(), 
-            harga: c[1]?.trim(), 
-            owner: c[2]?.trim(), 
-            status: c[3]?.trim(), 
-            tipeHarga: c[4]?.trim(), 
-            img: c[5]?.trim() || null,
-            waOwner: c[6]?.trim() || null // Kolom G
+            nama: c[0]?.trim(), harga: c[1]?.trim(), owner: c[2]?.trim(), status: c[3]?.trim(), tipeHarga: c[4]?.trim(), 
+            img: c[5]?.trim() || null, waOwner: c[6]?.trim() || null 
         };
     });
     setTitipanItems(data);
   };
 
-  // -- Parser Titipan Accounts (UPDATED: Kolom N/Index 13 untuk WA) --
+  // -- Parser Titipan Accounts --
   const parseTitipanAccounts = (text) => {
     const rows = text.split(/\r?\n/).slice(1);
     const data = rows.filter(r => r.trim() !== "").map(r => {
@@ -140,13 +159,13 @@ export default function Page() {
         return {
             nama: c[0]?.trim(), level: c[1]?.trim(), melee: c[2]?.trim(), dist: c[3]?.trim(), magic: c[4]?.trim(), def: c[5]?.trim(),
             setInfo: c[6]?.trim(), owner: c[7]?.trim(), status: c[8]?.trim(), tipeHarga: c[9]?.trim(), wajibMM: c[10]?.trim(),
-            harga: c[11]?.trim(), img: c[12]?.trim() || null,
-            waOwner: c[13]?.trim() || null // Kolom N
+            harga: c[11]?.trim(), img: c[12]?.trim() || null, waOwner: c[13]?.trim() || null 
         };
     });
     setTitipanAccounts(data);
   };
-      /* ===== LOAD DATA AUCTION ===== */
+
+  /* ===== LOAD DATA AUCTION ===== */
   useEffect(() => {
     fetchAuction(); 
     const interval = setInterval(fetchAuction, 5000);
@@ -179,23 +198,55 @@ export default function Page() {
     } catch (error) { console.error("Err lelang", error); }
   }
 
-  /* ===== HELPERS BARU (FORMAT WA) ===== */
+  /* ===== HELPERS BARU (IP & VALIDASI) ===== */
   const formatWaNumber = (num) => {
     if (!num) return null;
-    let clean = num.replace(/\D/g, ''); // Hapus karakter non-angka
+    let clean = num.replace(/\D/g, ''); 
     if (clean.startsWith('0')) return '62' + clean.slice(1);
     if (clean.startsWith('8')) return '62' + clean;
     return clean;
   };
 
-  /* ===== ACTION HANDLERS ===== */
+  // Validasi WA Strict (08xxx only)
+  const isValidWhatsApp = (phoneNumber) => {
+    const regexIndo = /^08[0-9]{8,13}$/;
+    return regexIndo.test(phoneNumber);
+  }
+
+  // Get IP Address User
+  async function getMyIP() {
+    try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        return data.ip; 
+    } catch (error) {
+        return "UNKNOWN";
+    }
+  }
+    /* ===== ACTION HANDLERS ===== */
   const handleBid = async (action) => {
+    // 1. CEK RACUN BROWSER (Prevents Troll)
+    if (localStorage.getItem("gearshop_status") === "BANNED") {
+        alert("Akses Anda diblokir karena terdeteksi spam/troll.");
+        return;
+    }
+
+    // 2. Cek Input IGN & WA
     if (!ign || !waNumber) {
         alert("Untuk ikut lelang, WAJIB isi IGN dan Nomor WA di keranjang!");
         setCartOpen(true);
         return;
     }
+
+    // 3. Validasi WA (Strict)
+    if (!isValidWhatsApp(waNumber)) {
+        alert("Nomor WA TIDAK VALID! Harus diawali '08' dan hanya angka (10-13 digit).");
+        setCartOpen(true);
+        return;
+    }
+
     const amount = action === "BIN" ? auctionData.binPrice : parseInt(bidAmount);
+    
     if (action === "BIN" && auctionData.currentBid >= auctionData.binPrice) {
         alert("Maaf bang, harga Bid sudah melewati harga BIN. Silahkan Bid manual.");
         return;
@@ -204,17 +255,45 @@ export default function Page() {
         alert(`Bid harus lebih tinggi dari ${formatGold(auctionData.currentBid + auctionData.increment)}`);
         return;
     }
-    if (action === "BID" && amount > (auctionData.currentBid * 2)) {
-         if(!confirm(`Yakin bid ${formatGold(amount)}? Ini jauh banget dari bid sekarang lho.`)) return;
-    }
+    
     if (!confirm(`Yakin mau ${action} seharga ${amount}?`)) return;
+    
     setBidLoading(true);
     try {
-        await fetch(AUCTION_API, {
-            method: "POST", body: JSON.stringify({ action, bid: amount, ign, wa: waNumber }), headers: { "Content-Type": "text/plain" }
+        // Ambil IP Address
+        const userIP = await getMyIP();
+
+        // Kirim IP ke Backend untuk dicek
+        const response = await fetch(AUCTION_API, {
+            method: "POST", 
+            body: JSON.stringify({ 
+                action, 
+                bid: amount, 
+                ign, 
+                wa: waNumber,
+                ip: userIP // Kirim IP
+            }), 
+            headers: { "Content-Type": "text/plain" }
         });
-        setBidAmount(""); setTimeout(fetchAuction, 1500); alert("Permintaan dikirim!");
-    } catch (error) { alert("Gagal kirim bid."); } finally { setBidLoading(false); }
+
+        const result = await response.json();
+
+        // Cek Respon dari Server
+        if (result.status === "BLOCKED") {
+            // Tanam Racun di Browser Troll
+            localStorage.setItem("gearshop_status", "BANNED");
+            alert("ANDA DIBLOKIR! Sistem mendeteksi spam/troll.");
+        } else {
+             setBidAmount(""); 
+             setTimeout(fetchAuction, 1500); 
+             alert("Permintaan dikirim!");
+        }
+
+    } catch (error) { 
+        alert("Gagal kirim bid (Koneksi Error)."); 
+    } finally { 
+        setBidLoading(false); 
+    }
   };
 
   const toggleTheme = () => {
@@ -233,28 +312,29 @@ export default function Page() {
 
   /* ===== CART LOGIC ===== */
   const addToCart = (item, mode) => {
-    if (item.status?.toLowerCase() === "kosong") return; 
+    if (item.status?.toLowerCase() === "kosong") return;
     const key = `${item.nama}-${item.kategori}-${mode}`;
     const exist = cart.find(c => c.key === key);
-    if (exist) { setCart(cart.map(c => c.key === key ? { ...c, qty: c.qty + 1 } : c)); } 
-    else { setCart([...cart, { ...item, mode, qty: 1, key }]); }
+    if (exist) { setCart(cart.map(c => c.key === key ? { ...c, qty: c.qty + 1 } : c));
+    } else { setCart([...cart, { ...item, mode, qty: 1, key }]); }
     setCartOpen(true);
   };
   const updateQty = (item, qty) => {
-    if (qty < 1) return; setCart(cart.map(c => c.key === item.key ? { ...c, qty } : c));
+    if (qty < 1) return;
+    setCart(cart.map(c => c.key === item.key ? { ...c, qty } : c));
   };
   const removeFromCart = item => setCart(cart.filter(c => c.key !== item.key));
   
   const totalQty = cart.reduce((s, c) => s + c.qty, 0);
   const totalPrice = cart.reduce((s, c) => s + (c.mode === "buy" ? c.buy : c.sell) * c.qty, 0);
-
+  
   const handleCheckoutClick = () => {
     if (!cart.length) return;
     if (!ign) { alert("Mohon isi IGN (Nickname Game) dulu ya!"); return; }
     setCartOpen(false);
     setConfirmOpen(true);
   };
-
+  
   const processToWA = () => {
     const itemText = cart.map(c => {
         const kategoriStr = c.kategori?.toLowerCase().includes("diamond") ? "" : ` [${c.kategori}]`;
@@ -266,50 +346,28 @@ export default function Page() {
   };
 
   const contactAdmin = () => window.open("https://wa.me/6283101456267?text=Halo%20Admin,%20mau%20tanya-tanya%20dong.", "_blank");
-
-  // === UPDATED LOGIC CONTACT OWNER ===
+  
   const contactOwner = (item, type) => {
-    // Cek ada nomor penitip gak? Kalau ada format dulu, kalau kosong pake nomor Admin
     const targetWA = item.waOwner ? formatWaNumber(item.waOwner) : "6283101456267";
-    
     const text = type === 'account' 
         ? `Halo, saya minat akun titipan: *${item.nama}* (Owner: ${item.owner}).` 
         : `Halo, saya minat barang titipan: *${item.nama}* (Owner: ${item.owner}).`;
-    
     window.open(`https://wa.me/${targetWA}?text=${encodeURIComponent(text)}`, "_blank");
   };
 
   const titipJualWA = (type) => {
       let text = type === 'item' 
-        ? `Halo min, mau nitip jual item dong.
-Nama item :
-Harga item :
-Owner item :
-Harga nego/fix :
-Gambar item : (jika ada)`
-        : `Halo min, mau titip jual akun dong.
-Nickname :
-Level :
-Melee :
-Distance :
-Magic :
-Defense :
-Set :
-Owner :
-Nego/Fix :
-Harga : (bebas mau rp/gold)
-Wajib MM/Tidak :
-Gambar akun : (jika ada)`;
-        
-      window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
+        ? `Halo min, mau nitip jual item dong.\nNama item :\nHarga item :\nOwner item :\nHarga nego/fix :\nGambar item : (jika ada)`
+        : `Halo min, mau titip jual akun dong.\nNickname :\nLevel :\nMelee :\nDistance :\nMagic :\nDefense :\nSet :\nOwner :\nNego/Fix :\nHarga : (bebas mau rp/gold)\nWajib MM/Tidak :\nGambar akun : (jika ada)`;
+    window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
   };
 
   const categories = ["All", ...new Set(items.map(i => i.kategori))];
   const filteredItems = items.filter(i => (i.nama.toLowerCase().includes(search.toLowerCase())) && (category === "All" || i.kategori === category)).sort((a, b) => sort === "buy-asc" ? a.buy - b.buy : sort === "buy-desc" ? b.buy - a.buy : 0);
-        const theme = {
+  
+  const theme = {
     bg: darkMode ? "#121212" : "#f5f5f5", text: darkMode ? "#e0e0e0" : "#333", cardBg: darkMode ? "#1e1e1e" : "#fff", border: darkMode ? "1px solid #333" : "1px solid #ddd", modalBg: darkMode ? "#222" : "#fff", accent: "#B8860B", inputBg: darkMode ? "#2c2c2c" : "#fff", subText: darkMode ? "#aaa" : "#666", auctionBg: darkMode ? "linear-gradient(135deg, #2c0000 0%, #4a0000 100%)" : "linear-gradient(135deg, #fff0f0 0%, #ffe0e0 100%)",
   };
-
   const styles = {
       header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#1e293b", color: "#fff", borderBottom: theme.border, position: "sticky", top: 0, zIndex: 100 },
       cartIcon: { position: "relative", fontSize: 24, cursor: "pointer" },
@@ -341,7 +399,7 @@ Gambar akun : (jika ada)`;
                       <div key={idx} style={{...styles.card, opacity: item.status?.toLowerCase() === 'sold' ? 0.6 : 1}}>
                           {item.status?.toLowerCase() === 'sold' && <div style={{position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", color:"red", fontWeight:"bold", fontSize:20, zIndex:2}}>SOLD</div>}
                           <div style={{height: 100, background: "#333", borderRadius: 4, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden"}}>
-                              {item.img ? <img src={item.img} alt={item.nama} style={{width:"100%", height:"100%", objectFit:"cover"}}/> : <span style={{fontSize:40}}>📦</span>}
+                               {item.img ? <img src={item.img} alt={item.nama} style={{width:"100%", height:"100%", objectFit:"cover"}}/> : <span style={{fontSize:40}}>📦</span>}
                           </div>
                           <div style={{fontWeight:"bold", color: "#FFD700", fontSize: 14}}>{item.nama}</div>
                           <div style={{fontSize: 12, color: theme.text}}>By: {item.owner}</div>
@@ -355,10 +413,10 @@ Gambar akun : (jika ada)`;
                   {marketTab === 'accounts' && titipanAccounts.map((acc, idx) => (
                       <div key={idx} style={{...styles.card, flexDirection: "row", gap: 12, alignItems: "center"}}>
                           <div style={{width: 80, height: 80, background: "#333", borderRadius: "50%", overflow:"hidden", flexShrink: 0}}>
-                              {acc.img ? <img src={acc.img} alt={acc.nama} style={{width:"100%", height:"100%", objectFit:"cover"}}/> : <div style={{width:"100%",height:"100%", display:"flex",alignItems:"center",justifyContent:"center", fontSize:30}}>👤</div>}
+                               {acc.img ? <img src={acc.img} alt={acc.nama} style={{width:"100%", height:"100%", objectFit:"cover"}}/> : <div style={{width:"100%",height:"100%", display:"flex",alignItems:"center",justifyContent:"center", fontSize:30}}>👤</div>}
                           </div>
                           <div style={{flex: 1}}>
-                              <div style={{display:"flex", justifyContent:"space-between"}}><div style={{fontWeight:"bold", fontSize: 16, color: "#FFD700"}}>{acc.nama} <span style={{fontSize:12, color:"#aaa"}}>Lv.{acc.level}</span></div>{acc.wajibMM?.toLowerCase() === 'ya' && <div style={{fontSize: 10, background: "red", color:"white", padding: "2px 6px", borderRadius: 4}}>🛡️ WAJIB MM</div>}</div>
+                               <div style={{display:"flex", justifyContent:"space-between"}}><div style={{fontWeight:"bold", fontSize: 16, color: "#FFD700"}}>{acc.nama} <span style={{fontSize:12, color:"#aaa"}}>Lv.{acc.level}</span></div>{acc.wajibMM?.toLowerCase() === 'ya' && <div style={{fontSize: 10, background: "red", color:"white", padding: "2px 6px", borderRadius: 4}}>🛡️ WAJIB MM</div>}</div>
                               <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap: 4, fontSize: 11, margin: "8px 0", color: "#ccc", background:"rgba(255,255,255,0.05)", padding: 6, borderRadius: 4}}><div>⚔️ {acc.melee} | 🏹 {acc.dist}</div><div>✨ {acc.magic} | 🛡️ {acc.def}</div></div>
                               <div style={{fontSize: 11, marginBottom: 4, color: "#aaa"}}>Set: {acc.setInfo}</div>
                               <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 4}}><div><div style={{fontSize:10, color:"#aaa"}}>Owner: {acc.owner}</div><div style={{color: "#4caf50", fontWeight:"bold", fontSize: 14}}>{acc.harga}</div></div><button onClick={()=>contactOwner(acc, 'account')} style={{...styles.btn, fontSize: 12, background: "#333", border: "1px solid #555"}}>{acc.tipeHarga?.toLowerCase() === 'fix' ? '💬 Beli (Fix)' : '💬 Nego'}</button></div>
@@ -373,11 +431,23 @@ Gambar akun : (jika ada)`;
       </div>
   );
 
+  // === RENDER MAINTENANCE SCREEN (Tampilan Baru) ===
+  if (!loading && isMaintenance) {
+    return (
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#121212", color: "#ffffff", fontFamily: "sans-serif", textAlign: "center", padding: "20px" }}>
+            <h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "10px", letterSpacing: "2px" }}>⚙️GEARSHOP⚙️</h1>
+            <h2 style={{ color: "#f1c40f", fontSize: "1.5rem", marginBottom: "20px", border: "2px solid #f1c40f", padding: "10px 20px", borderRadius: "8px", background: "rgba(241, 196, 15, 0.1)" }}>🚧 MAINTENANCE 🚧</h2>
+            <p style={{ fontSize: "1.1rem", marginBottom: "5px" }}>Silahkan cek dalam beberapa waktu lagi.</p>
+            <p style={{ fontSize: "1.1rem", fontWeight: "bold", marginTop: "20px" }}>Terimakasih 😁</p>
+        </div>
+    );
+  }
+
+// === RENDER TOKO TUTUP BIASA ===
   if (!loading && !isStoreOpen) {
     return (<div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20, textAlign: "center" }}><img src="/logo.png" height={60} alt="Logo" style={{marginBottom: 20}} /><h2 style={{color: "#FF4444", fontSize: 28, marginBottom: 10}}>🔴 TOKO TUTUP</h2><p style={{color: theme.subText, maxWidth: 300, marginBottom: 30}}>Maaf ya, admin lagi istirahat. Cek lagi nanti ya!</p><button onClick={contactAdmin} style={{ background: "#25D366", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 50, fontSize: 16, fontWeight: "bold", cursor: "pointer" }}><span>💬 Chat WhatsApp Admin</span></button></div>);
   }
-
-  return (
+    return (
     <div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, fontFamily: "sans-serif", paddingBottom: 80 }}>
       <header style={styles.header}><div style={{display:"flex", alignItems:"center", gap: 10}}><img src="/logo.png" height={36} alt="Logo" /></div><div style={{display:"flex", alignItems:"center", gap: 15}}><div style={{cursor:"pointer", fontSize: 22}} onClick={() => setMarketOpen(true)}>🏪</div><div style={{cursor:"pointer", fontSize: 20}} onClick={toggleTheme}>{darkMode ? "☀️" : "🌙"}</div><div style={styles.cartIcon} onClick={() => setCartOpen(true)}>🛒{cart.length > 0 && <span style={styles.cartBadge}>{totalQty}</span>}</div></div></header>
 
@@ -400,10 +470,10 @@ Gambar akun : (jika ada)`;
               <div style={{fontWeight: "bold", fontSize: 16, color: "#FFD700"}}>{item.nama}<span style={{fontSize: 10, display:"block", color: theme.subText, fontWeight:"normal"}}>({item.kategori})</span></div>
               <div style={{fontSize: 12, color: status === 'full' ? '#4caf50' : status === 'kosong' ? '#f44336' : '#ff9800'}}>{statusLabel(item.status)}</div>
               <div style={{marginTop: "auto"}}>
-                 <button onClick={() => canBuy && addToCart(item, 'buy')} disabled={!canBuy} style={{...styles.btn, width: "100%", marginBottom: 4, background: canBuy ? theme.accent : "#555", opacity: canBuy ? 1 : 0.6, cursor: canBuy ? "pointer" : "not-allowed"}}>
+                  <button onClick={() => canBuy && addToCart(item, 'buy')} disabled={!canBuy} style={{...styles.btn, width: "100%", marginBottom: 4, background: canBuy ? theme.accent : "#555", opacity: canBuy ? 1 : 0.6, cursor: canBuy ? "pointer" : "not-allowed"}}>
                      {canBuy ? <span>Beli <span style={{color: "white", fontWeight: "bold"}}>{item.buy.toLocaleString('id-ID')}</span> 🪙</span> : (status === 'take' ? "Stok Habis" : "Tidak Tersedia")}
                  </button>
-                 <button onClick={() => canSell && addToCart(item, 'sell')} disabled={!canSell} style={{...styles.btn, width: "100%", background: canSell ? "#333" : "#222", border: "1px solid #555", opacity: canSell ? 1 : 0.5, cursor: canSell ? "pointer" : "not-allowed"}}>
+                  <button onClick={() => canSell && addToCart(item, 'sell')} disabled={!canSell} style={{...styles.btn, width: "100%", background: canSell ? "#333" : "#222", border: "1px solid #555", opacity: canSell ? 1 : 0.5, cursor: canSell ? "pointer" : "not-allowed"}}>
                      {canSell ? <span>Jual {item.sell.toLocaleString('id-ID')} 🪙</span> : (status === 'full' ? "Toko Penuh" : "Jual N/A")}
                  </button>
               </div>
@@ -428,7 +498,7 @@ Gambar akun : (jika ada)`;
               <div style={{marginTop: 20, paddingTop: 20, borderTop: "2px solid #555"}}>
                   <h4 style={{marginBottom: 10}}>Data Pembeli</h4>
                   <input placeholder="Nickname In-Game (IGN) *" value={ign} onChange={(e) => {setIgn(e.target.value); localStorage.setItem("gearShopIGN", e.target.value)}} style={styles.input} />
-                  <input placeholder="Nomor WhatsApp (Optional)" type="tel" value={waNumber} onChange={(e) => {setWaNumber(e.target.value); localStorage.setItem("gearShopWA", e.target.value)}} style={styles.input} />
+                  <input placeholder="Nomor WhatsApp (Ex: 08123456789)" type="tel" value={waNumber} onChange={(e) => {setWaNumber(e.target.value); localStorage.setItem("gearShopWA", e.target.value)}} style={styles.input} />
                   <div style={{display:"flex", justifyContent:"space-between", fontSize: 18, fontWeight:"bold", marginTop: 10}}><span>Total:</span><span>{formatGold(totalPrice)}</span></div>
                   <button onClick={handleCheckoutClick} style={{...styles.btn, width: "100%", background: "#25D366", padding: 15, marginTop: 20, fontSize: 16}}>WhatsApp Checkout 🚀</button>
               </div>
@@ -447,7 +517,7 @@ Gambar akun : (jika ada)`;
                               {c.nama} <span style={{fontSize:10}}>({c.mode})</span> 
                               <div style={{float: "right"}}>x{c.qty}</div>
                           </div>
-                      ))}
+                       ))}
                   </div>
                   <div style={{display:"flex", justifyContent:"space-between", fontSize: 18, fontWeight:"bold", marginBottom: 20, borderTop: "1px solid #555", paddingTop: 10}}>
                       <span>Total Bayar:</span>
