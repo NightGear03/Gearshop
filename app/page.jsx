@@ -1,3 +1,4 @@
+[PART 1 OF 6]
 "use client";
 
 import { useEffect, useState } from "react";
@@ -26,6 +27,18 @@ export default function Page() {
   const [titipanAccounts, setTitipanAccounts] = useState([]);
   const [titipMenuOpen, setTitipMenuOpen] = useState(false);
 
+  /* ===== STATE CALCULATOR (NEW FEATURE) ===== */
+  const [calcOpen, setCalcOpen] = useState(false);
+  const [calcInput, setCalcInput] = useState({
+    lvl: "",
+    stat: "",
+    extra: "",
+    wpn: 5,
+    mode: "afk", // 'afk' or 'ptrain'
+    magic: false
+  });
+  const [calcResult, setCalcResult] = useState(null);
+
   /* ===== STATE CART & USER & CONFIRMATION ===== */
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
@@ -39,7 +52,7 @@ export default function Page() {
   const [bidLoading, setBidLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState("Loading...");
   const [isAuctionExpanded, setIsAuctionExpanded] = useState(false);
-  
+
   // === STATE BARU BUAT BIN MODAL ===
   const [isBinModalOpen, setIsBinModalOpen] = useState(false);
   const [binCode, setBinCode] = useState("");
@@ -88,6 +101,7 @@ export default function Page() {
     }
     loadData();
   }, []);
+[PART 2 OF 6]
   // -- Parser Toko Utama --
   const parseStoreData = (text) => {
     const rows = text.split(/\r?\n/).slice(1);
@@ -108,17 +122,17 @@ export default function Page() {
         promo: c[5]?.trim() || null
       };
     });
-
     // Logic Status Toko & MT
     const systemRow = parsed.find(item => item.kategori?.toUpperCase() === "#SYSTEM" && item.nama?.toUpperCase() === "STATUS_TOKO");
     const statusToko = systemRow ? systemRow.status?.toUpperCase() : "BUKA";
     const isAdmin = localStorage.getItem("gearshop_admin") === "true";
-
     if (statusToko === "TUTUP") {
         setIsStoreOpen(false); setIsMaintenance(false);
     } else if (statusToko === "MT") {
-        if (isAdmin) { setIsStoreOpen(true); setIsMaintenance(false); }
-        else { setIsStoreOpen(false); setIsMaintenance(true); }
+        if (isAdmin) { setIsStoreOpen(true); setIsMaintenance(false);
+        }
+        else { setIsStoreOpen(false); setIsMaintenance(true);
+        }
     } else {
         setIsStoreOpen(true); setIsMaintenance(false);
     }
@@ -158,7 +172,7 @@ export default function Page() {
     const interval = setInterval(fetchAuction, 5000);
     return () => clearInterval(interval);
   }, []);
-
+  
   useEffect(() => {
     if (!auctionData || !auctionData.endTime) return;
     const timer = setInterval(() => {
@@ -180,9 +194,11 @@ export default function Page() {
         const res = await fetch(`${AUCTION_API}?t=${new Date().getTime()}`);
         const data = await res.json();
         setAuctionData(data);
-    } catch (error) { console.error("Err lelang", error); }
-        }
-                         /* ===== HELPERS BARU (IP & VALIDASI) ===== */
+    } catch (error) { console.error("Err lelang", error);
+    }
+  }
+
+  /* ===== HELPERS BARU (IP & VALIDASI) ===== */
   const formatWaNumber = (num) => {
     if (!num) return null;
     let clean = num.replace(/\D/g, ''); 
@@ -190,11 +206,12 @@ export default function Page() {
     if (clean.startsWith('8')) return '62' + clean;
     return clean;
   };
-
   const isValidWhatsApp = (phoneNumber) => /^08[0-9]{8,13}$/.test(phoneNumber);
 
   async function getMyIP() {
-    try { const response = await fetch('https://api.ipify.org?format=json'); const data = await response.json(); return data.ip; } catch (error) { return "UNKNOWN"; }
+    try { const response = await fetch('https://api.ipify.org?format=json');
+    const data = await response.json(); return data.ip; } catch (error) { return "UNKNOWN";
+    }
   }
 
   /* ===== ACTION HANDLERS BARU (BIN MODAL & VALIDASI) ===== */
@@ -205,7 +222,6 @@ export default function Page() {
     if (!isValidWhatsApp(waNumber)) { alert("Nomor WA Tidak Valid (08xx only)."); setCartOpen(true); return; }
 
     const amount = action === "BIN" ? auctionData.binPrice : parseInt(bidAmount);
-
     // 2. LOGIC BIN: BUKA MODAL DULU
     if (action === "BIN" && !code) {
         if (auctionData.currentBid >= auctionData.binPrice) {
@@ -219,7 +235,6 @@ export default function Page() {
         if (!amount || amount <= auctionData.currentBid) {
             alert(`Minimal Bid: ${(auctionData.currentBid + auctionData.increment).toLocaleString('id-ID')}`); return;
         }
-        // [FIX] Cek Over-Bid di Frontend
         if (amount >= auctionData.binPrice) {
              alert(`Bid ketinggian! Maksimal bid harus di bawah ${auctionData.binPrice.toLocaleString('id-ID')}. Gunakan tombol BIN jika ingin langsung beli.`); return;
         }
@@ -242,27 +257,93 @@ export default function Page() {
         const result = await response.json();
 
         if (result.status === "BLOCKED") {
-            localStorage.setItem("gearshop_status", "BANNED");
-            alert("ANDA DIBLOKIR!");
+            localStorage.setItem("gearshop_status", "BANNED"); alert("ANDA DIBLOKIR!");
         } else if (result.status === "SUCCESS") {
              setBidAmount(""); setBinCode(""); setIsBinModalOpen(false);
              setTimeout(fetchAuction, 1500); 
              alert(result.message);
         } else {
-             alert(result.message); // Kode salah atau error lain
+             alert(result.message);
         }
-    } catch (error) { alert("Koneksi Error"); } finally { setBidLoading(false); }
+    } catch (error) { alert("Koneksi Error");
+    } finally { setBidLoading(false); }
   };
 
   const requestBinCode = () => {
-      const cleanWA = waNumber.replace(/\D/g, ''); 
-      const text = `Halo Admin, saya *${ign}* (WA: ${cleanWA}).\nSaya mau *BIN (Buy It Now)* item: *${auctionData.item}*.\n\nMohon kirimkan *Kode Konfirmasi BIN*-nya. Saya siap transaksi.`;
+      const cleanWA = waNumber.replace(/\D/g, '');
+      const text = `Halo Admin, saya *${ign}* (WA: ${cleanWA}).\nSaya mau *BIN (Buy It Now)* item: *${auctionData.item}*.\n\nMohon kirimkan *Kode Konfirmasi BIN*-nya.\nSaya siap transaksi.`;
       window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
   };
-    const toggleTheme = () => {
-    const newMode = !darkMode; setDarkMode(newMode); localStorage.setItem("gearShopTheme", newMode ? "dark" : "light");
+  [PART 3 OF 6]
+  /* ===== LOGIC CALCULATOR (BRAIN) ===== */
+  const handleCalculate = () => {
+    const lvl = parseInt(calcInput.lvl);
+    const stat = parseInt(calcInput.stat);
+    const extra = parseInt(calcInput.extra) || 0;
+    const wpn = parseInt(calcInput.wpn);
+    
+    if (!lvl || !stat) return;
+
+    // 1. Hitung Effective Stat (AFK vs Ptrain)
+    // Rumus Riset: Ptrain Melee = Stat * 1.2 | Ptrain Magic = Stat * 1.35
+    let effectiveStat = stat;
+    if (calcInput.mode === 'ptrain') {
+        effectiveStat = calcInput.magic ? (stat * 1.35) : (stat * 1.2);
+    }
+
+    // 2. Hitung Total Power (Defense Penetration)
+    // Rumus Suci: Stat + Extra + Wpn + (Level / 2)
+    const powerScore = effectiveStat + extra + wpn + Math.floor(lvl / 2);
+
+    // 3. Database Monster (Hasil Riset 50 Sampel)
+    const MONSTER_DB = [
+      { name: "Rat (Lv.1)", min: 0 },
+      { name: "Rat (Lv.3)", min: 22 },
+      { name: "Crow (Lv.6)", min: 33 },
+      { name: "Wolf (Lv.9)", min: 42 },
+      { name: "Mummy", min: 55 },
+      { name: "Pharaoh", min: 105 },
+      { name: "Assassin", min: 145 },
+      { name: "Zombie", min: 170 },
+      { name: "Skeleton", min: 195 },
+      { name: "Skeleton Warrior", min: 265 },
+      { name: "Vampire", min: 345 },
+      { name: "Drow Assassin", min: 450 },
+      { name: "Lizard Warrior", min: 610 },
+      { name: "Lizard Captain", min: 730 },
+      { name: "Minotaur", min: 940 },
+      { name: "Minotaur (High)", min: 1150 },
+      { name: "Demon", min: 1400 }
+    ];
+
+    // 4. Cari Target
+    let currentTarget = MONSTER_DB[0];
+    let nextTarget = MONSTER_DB[1];
+
+    for (let i = 0; i < MONSTER_DB.length; i++) {
+        if (powerScore >= MONSTER_DB[i].min) {
+            currentTarget = MONSTER_DB[i];
+            nextTarget = MONSTER_DB[i+1] || { name: "MAX LEVEL", min: 9999 };
+        } else {
+            break;
+        }
+    }
+
+    setCalcResult({
+        score: Math.floor(powerScore),
+        target: currentTarget.name,
+        next: nextTarget.name,
+        need: Math.ceil(nextTarget.min - powerScore) // Pembulatan ke atas biar aman
+    });
+  };
+
+  /* ===== UI HELPERS ===== */
+  const toggleTheme = () => {
+    const newMode = !darkMode; setDarkMode(newMode);
+    localStorage.setItem("gearShopTheme", newMode ? "dark" : "light");
   };
   const formatGold = (val) => <span style={{ fontWeight: "bold", color: "#B8860B" }}>{val ? val.toLocaleString('id-ID') : 0} 🪙</span>;
+  
   const statusLabel = s => {
     const v = s?.toLowerCase();
     if (v === "full") return "🟢 Full"; if (v === "ready") return "🔵 Ready";
@@ -279,7 +360,8 @@ export default function Page() {
     } else { setCart([...cart, { ...item, mode, qty: 1, key }]); }
     setCartOpen(true);
   };
-  const updateQty = (item, qty) => { if (qty < 1) return; setCart(cart.map(c => c.key === item.key ? { ...c, qty } : c)); };
+  const updateQty = (item, qty) => { if (qty < 1) return;
+    setCart(cart.map(c => c.key === item.key ? { ...c, qty } : c)); };
   const removeFromCart = item => setCart(cart.filter(c => c.key !== item.key));
   
   const totalQty = cart.reduce((s, c) => s + c.qty, 0);
@@ -290,6 +372,7 @@ export default function Page() {
     if (!ign) { alert("Mohon isi IGN (Nickname Game) dulu ya!"); return; }
     setCartOpen(false); setConfirmOpen(true);
   };
+  
   const processToWA = () => {
     const itemText = cart.map(c => {
         const kategoriStr = c.kategori?.toLowerCase().includes("diamond") ? "" : ` [${c.kategori}]`;
@@ -301,26 +384,33 @@ export default function Page() {
   };
 
   const contactAdmin = () => window.open("https://wa.me/6283101456267?text=Halo%20Admin,%20mau%20tanya-tanya%20dong.", "_blank");
+  
   const contactOwner = (item, type) => {
     const targetWA = item.waOwner ? formatWaNumber(item.waOwner) : "6283101456267";
     const text = type === 'account' ? `Halo, saya minat akun titipan: *${item.nama}* (Owner: ${item.owner}).` : `Halo, saya minat barang titipan: *${item.nama}* (Owner: ${item.owner}).`;
     window.open(`https://wa.me/${targetWA}?text=${encodeURIComponent(text)}`, "_blank");
   };
+  
   const titipJualWA = (type) => {
-      let text = type === 'item' ? `Halo min, mau nitip jual item dong.\nNama item :\nHarga item :\nOwner item :\nHarga nego/fix :\nGambar item : (jika ada)` : `Halo min, mau titip jual akun dong.\nNickname :\nLevel :\nMelee :\nDistance :\nMagic :\nDefense :\nSet :\nOwner :\nNego/Fix :\nHarga : (bebas mau rp/gold)\nWajib MM/Tidak :\nGambar akun : (jika ada)`;
+      let text = type === 'item' ?
+      `Halo min, mau nitip jual item dong.\nNama item :\nHarga item :\nOwner item :\nHarga nego/fix :\nGambar item : (jika ada)` : `Halo min, mau titip jual akun dong.\nNickname :\nLevel :\nMelee :\nDistance :\nMagic :\nDefense :\nSet :\nOwner :\nNego/Fix :\nHarga : (bebas mau rp/gold)\nWajib MM/Tidak :\nGambar akun : (jika ada)`;
       window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
   };
 
   const categories = ["All", ...new Set(items.map(i => i.kategori))];
   const filteredItems = items.filter(i => (i.nama.toLowerCase().includes(search.toLowerCase())) && (category === "All" || i.kategori === category)).sort((a, b) => sort === "buy-asc" ? a.buy - b.buy : sort === "buy-desc" ? b.buy - a.buy : 0);
   
-  const theme = { bg: darkMode ? "#121212" : "#f5f5f5", text: darkMode ? "#e0e0e0" : "#333", cardBg: darkMode ? "#1e1e1e" : "#fff", border: darkMode ? "1px solid #333" : "1px solid #ddd", modalBg: darkMode ? "#222" : "#fff", accent: "#B8860B", inputBg: darkMode ? "#2c2c2c" : "#fff", subText: darkMode ? "#aaa" : "#666", auctionBg: darkMode ? "linear-gradient(135deg, #2c0000 0%, #4a0000 100%)" : "linear-gradient(135deg, #fff0f0 0%, #ffe0e0 100%)" };
-  
+  const theme = { bg: darkMode ? "#121212" : "#f5f5f5", text: darkMode ? "#e0e0e0" : "#333", cardBg: darkMode ?
+  "#1e1e1e" : "#fff", border: darkMode ? "1px solid #333" : "1px solid #ddd", modalBg: darkMode ?
+  "#222" : "#fff", accent: "#B8860B", inputBg: darkMode ? "#2c2c2c" : "#fff", subText: darkMode ? "#aaa" : "#666", auctionBg: darkMode ?
+  "linear-gradient(135deg, #2c0000 0%, #4a0000 100%)" : "linear-gradient(135deg, #fff0f0 0%, #ffe0e0 100%)" };
+  [PART 4 OF 6]
   const styles = {
       header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#1e293b", color: "#fff", borderBottom: theme.border, position: "sticky", top: 0, zIndex: 100 },
       cartIcon: { position: "relative", fontSize: 24, cursor: "pointer" },
       cartBadge: { position: "absolute", top: -5, right: -8, background: "red", color: "white", borderRadius: "50%", width: 18, height: 18, fontSize: 11, display: "flex", justifyContent: "center", alignItems: "center" },
       grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 },
+      
       card: { background: theme.cardBg, border: theme.border, borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 6 },
       input: { width: "100%", padding: 10, borderRadius: 6, border: theme.border, background: theme.inputBg, color: theme.text, marginBottom: 10, outline: "none" },
       btn: { background: theme.accent, color: "#fff", border: "none", padding: "8px", borderRadius: 4, cursor: "pointer", fontWeight: "bold" },
@@ -332,20 +422,53 @@ export default function Page() {
       fabMenu: { position: "fixed", bottom: 95, right: 30, display: "flex", flexDirection: "column", gap: 10, zIndex: 201 }
   };
 
-  if (!loading && isMaintenance) { return (<div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#121212", color: "#ffffff", fontFamily: "sans-serif", textAlign: "center", padding: "20px" }}><h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "10px", letterSpacing: "2px" }}>⚙️GEARSHOP⚙️</h1><h2 style={{ color: "#f1c40f", fontSize: "1.5rem", marginBottom: "20px", border: "2px solid #f1c40f", padding: "10px 20px", borderRadius: "8px", background: "rgba(241, 196, 15, 0.1)" }}>🚧 MAINTENANCE 🚧</h2><p style={{ fontSize: "1.1rem", marginBottom: "5px" }}>Silahkan cek dalam beberapa waktu lagi.</p><p style={{ fontSize: "1.1rem", fontWeight: "bold", marginTop: "20px" }}>Terimakasih 😁</p></div>); }
+  if (!loading && isMaintenance) { return (<div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#121212", color: "#ffffff", fontFamily: "sans-serif", textAlign: "center", padding: "20px" }}><h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "10px", letterSpacing: "2px" }}>⚙️GEARSHOP⚙️</h1><h2 style={{ color: "#f1c40f", fontSize: "1.5rem", marginBottom: "20px", border: "2px solid #f1c40f", padding: "10px 20px", borderRadius: "8px", background: "rgba(241, 196, 15, 0.1)" }}>🚧 MAINTENANCE 🚧</h2><p style={{ fontSize: "1.1rem", marginBottom: "5px" }}>Silahkan cek dalam beberapa waktu lagi.</p><p style={{ fontSize: "1.1rem", fontWeight: "bold", marginTop: "20px" }}>Terimakasih 😁</p></div>);
+  }
   
-  if (!loading && !isStoreOpen) { return (<div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20, textAlign: "center" }}><img src="/logo.png" height={60} alt="Logo" style={{marginBottom: 20}} /><h2 style={{color: "#FF4444", fontSize: 28, marginBottom: 10}}>🔴 TOKO TUTUP</h2><p style={{color: theme.subText, maxWidth: 300, marginBottom: 30}}>Maaf ya, admin lagi istirahat. Cek lagi nanti ya!</p><button onClick={contactAdmin} style={{ background: "#25D366", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 50, fontSize: 16, fontWeight: "bold", cursor: "pointer" }}><span>💬 Chat WhatsApp Admin</span></button></div>); }
-      return (
+  if (!loading && !isStoreOpen) { return (<div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20, textAlign: "center" }}><img src="/logo.png" height={60} alt="Logo" style={{marginBottom: 20}} /><h2 style={{color: "#FF4444", fontSize: 28, marginBottom: 10}}>🔴 TOKO TUTUP</h2><p style={{color: theme.subText, maxWidth: 300, marginBottom: 30}}>Maaf ya, admin lagi istirahat. Cek lagi nanti ya!</p><button onClick={contactAdmin} style={{ background: "#25D366", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 50, fontSize: 16, fontWeight: "bold", cursor: "pointer" }}><span>💬 Chat WhatsApp Admin</span></button></div>);
+  }
+
+  return (
     <div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, fontFamily: "sans-serif", paddingBottom: 80 }}>
-      <header style={styles.header}><div style={{display:"flex", alignItems:"center", gap: 10}}><img src="/logo.png" height={36} alt="Logo" /></div><div style={{display:"flex", alignItems:"center", gap: 15}}><div style={{cursor:"pointer", fontSize: 22}} onClick={() => setMarketOpen(true)}>🏪</div><div style={{cursor:"pointer", fontSize: 20}} onClick={toggleTheme}>{darkMode ? "☀️" : "🌙"}</div><div style={styles.cartIcon} onClick={() => setCartOpen(true)}>🛒{cart.length > 0 && <span style={styles.cartBadge}>{totalQty}</span>}</div></div></header>
+      {/* HEADER UTAMA */}
+      <header style={styles.header}>
+          <div style={{display:"flex", alignItems:"center", gap: 10}}>
+              <img src="/logo.png" height={36} alt="Logo" />
+          </div>
+          <div style={{display:"flex", alignItems:"center", gap: 15}}>
+              {/* TOMBOL CALCULATOR BARU (Posisi Kiri Market) */}
+              <div style={{cursor:"pointer", fontSize: 22}} onClick={() => setCalcOpen(true)}>🧮</div>
+              
+              {/* Tombol Market, Theme, Cart Lama */}
+              <div style={{cursor:"pointer", fontSize: 22}} onClick={() => setMarketOpen(true)}>🏪</div>
+              <div style={{cursor:"pointer", fontSize: 20}} onClick={toggleTheme}>{darkMode ? "☀️" : "🌙"}</div>
+              <div style={styles.cartIcon} onClick={() => setCartOpen(true)}>
+                  🛒{cart.length > 0 && <span style={styles.cartBadge}>{totalQty}</span>}
+              </div>
+          </div>
+      </header>
 
       <main style={{ padding: 16 }}>
         {/* === AUCTION CARD === */}
-        {auctionData && auctionData.status !== "empty" && (<div style={{ marginBottom: 24, borderRadius: 12, overflow: "hidden", boxShadow: "0 4px 20px rgba(255, 68, 68, 0.5)", border: "2px solid #FF4444", background: theme.auctionBg, transition: "all 0.3s ease" }}><div onClick={() => setIsAuctionExpanded(!isAuctionExpanded)} style={{ padding: "12px 16px", background: "linear-gradient(90deg, #880000 0%, #aa0000 100%)", color: "white", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{display:"flex", alignItems:"center", gap: 12}}><div style={{fontSize: 20}}>🔨</div><div><div style={{fontSize: 11, opacity: 0.8, fontWeight:"bold", textTransform:"uppercase"}}>Live Auction {isAuctionExpanded ? "▼" : "▶"}</div>{!isAuctionExpanded && <div style={{fontSize: 15, fontWeight: "bold", color: "#FFD700"}}>{auctionData.item}</div>}</div></div><div style={{textAlign: "right"}}><div style={{fontSize: 14, fontWeight: "bold", fontFamily: "monospace", color: "#fff"}}>{timeLeft}</div></div></div>
-        {isAuctionExpanded && (<div style={{ padding: 16, textAlign:"center" }}>
-            <strong style={{fontSize: 22, display:"block", marginBottom: 5, color: theme.text}}>{auctionData.item}</strong>
-            <div style={{fontSize: 32, fontWeight:"bold", color: "#25D366", textShadow: "0 0 15px rgba(37, 211, 102, 0.4)", margin: "5px 0"}}>{formatGold(auctionData.currentBid)}</div>
-            
+        {auctionData && auctionData.status !== "empty" && (
+        <div style={{ marginBottom: 24, borderRadius: 12, overflow: "hidden", boxShadow: "0 4px 20px rgba(255, 68, 68, 0.5)", border: "2px solid #FF4444", background: theme.auctionBg, transition: "all 0.3s ease" }}>
+            <div onClick={() => setIsAuctionExpanded(!isAuctionExpanded)} style={{ padding: "12px 16px", background: "linear-gradient(90deg, #880000 0%, #aa0000 100%)", color: "white", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{display:"flex", alignItems:"center", gap: 12}}>
+                    <div style={{fontSize: 20}}>🔨</div>
+                    <div>
+                        <div style={{fontSize: 11, opacity: 0.8, fontWeight:"bold", textTransform:"uppercase"}}>Live Auction {isAuctionExpanded ? "▼" : "▶"}</div>
+                        {!isAuctionExpanded && <div style={{fontSize: 15, fontWeight: "bold", color: "#FFD700"}}>{auctionData.item}</div>}
+                    </div>
+                </div>
+                <div style={{textAlign: "right"}}>
+                    <div style={{fontSize: 14, fontWeight: "bold", fontFamily: "monospace", color: "#fff"}}>{timeLeft}</div>
+                </div>
+            </div>
+            {isAuctionExpanded && (
+            <div style={{ padding: 16, textAlign:"center" }}>
+                <strong style={{fontSize: 22, display:"block", marginBottom: 5, color: theme.text}}>{auctionData.item}</strong>
+                <div style={{fontSize: 32, fontWeight:"bold", color: "#25D366", textShadow: "0 0 15px rgba(37, 211, 102, 0.4)", margin: "5px 0"}}>{formatGold(auctionData.currentBid)}</div>
+              [PART 5 OF 6]
             {/* HISTORY LOG */}
             <div style={{ marginTop: 15, background: "rgba(0,0,0,0.3)", borderRadius: 12, padding: "12px", textAlign: "left", border: "1px solid rgba(255,255,255,0.1)", maxHeight: 200, overflowY: "auto" }}>
                 <div style={{fontSize:11, color:"#aaa", marginBottom:5, textTransform:"uppercase", letterSpacing:1, borderBottom:"1px solid #555", paddingBottom:4}}>Riwayat Bid Terakhir</div>
@@ -362,13 +485,53 @@ export default function Page() {
                 ) : (<div style={{textAlign:"center", color:"#777", padding:10}}>Belum ada bid. Jadilah yang pertama!</div>)}
             </div>
 
-            {!auctionData.isEnded && (<div style={{display:"flex", gap: 8, marginTop: 20}}><input type="number" placeholder="Nominal Bid..." value={bidAmount} onChange={e => setBidAmount(e.target.value)} style={{...styles.input, flex: 1, marginBottom: 0}} /><button onClick={() => handleBid("BID")} disabled={bidLoading} style={{background: "#FF4444", color: "white", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold"}}>BID</button>{auctionData.currentBid < auctionData.binPrice ? (<button onClick={() => handleBid("BIN")} disabled={bidLoading} style={{background: "#FFD700", color: "#000", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold"}}>BIN</button>) : (<button disabled style={{background: "#555", color: "#ccc", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold", cursor: "not-allowed"}}>BIN CLOSED</button>)}</div>)}
-        </div>)}</div>)}
+            {!auctionData.isEnded && (
+            <div style={{display:"flex", gap: 8, marginTop: 20}}>
+                <input type="number" placeholder="Nominal Bid..." value={bidAmount} onChange={e => setBidAmount(e.target.value)} style={{...styles.input, flex: 1, marginBottom: 0}} />
+                <button onClick={() => handleBid("BID")} disabled={bidLoading} style={{background: "#FF4444", color: "white", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold"}}>BID</button>
+                {auctionData.currentBid < auctionData.binPrice ? (
+                    <button onClick={() => handleBid("BIN")} disabled={bidLoading} style={{background: "#FFD700", color: "#000", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold"}}>BIN</button>
+                ) : (
+                    <button disabled style={{background: "#555", color: "#ccc", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold", cursor: "not-allowed"}}>BIN CLOSED</button>
+                )}
+            </div>
+            )}
+        </div>
+        )}
+        </div>
+        )}
 
         {/* HERO ITEM */}
-        {heroItems.length > 0 && (<div style={{ marginBottom: 20 }}><h3 style={{ marginLeft: 8, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>🔥 Hot Items</h3><div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 10, paddingLeft: 8 }}>{heroItems.map((item, idx) => { const status = item.status?.toLowerCase(); const canBuy = (status === 'ready' || status === 'full') && item.buy > 0; return (<div key={idx} style={{ minWidth: 140, background: theme.cardBg, border: theme.border, borderRadius: 8, padding: 10, display: "flex", flexDirection: "column", gap: 5 }}><div style={{fontWeight: "bold", fontSize: 14, color: "#FFD700", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"}}>{item.nama}</div><div style={{fontSize: 10, color: theme.subText, marginTop: -3}}>({item.targetKategori || item.kategori})</div><div style={{fontSize: 11, color: status === 'full' ? '#4caf50' : status === 'kosong' ? '#f44336' : '#ff9800'}}>{statusLabel(item.status)}</div><div style={{marginTop: "auto"}}><button onClick={() => canBuy && addToCart(item, 'buy')} disabled={!canBuy} style={{...styles.btn, fontSize: 11, width: "100%", background: canBuy ? theme.accent : "#555", opacity: canBuy ? 1 : 0.7, cursor: canBuy ? "pointer" : "not-allowed"}}>{canBuy ? <span>Beli {item.buy.toLocaleString('id-ID')} 🪙</span> : (status === 'kosong' ? "Stok Habis" : "N/A")}</button></div></div>)})}</div></div>)}
+        {heroItems.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+            <h3 style={{ marginLeft: 8, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>🔥 Hot Items</h3>
+            <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 10, paddingLeft: 8 }}>
+            {heroItems.map((item, idx) => { 
+                const status = item.status?.toLowerCase(); 
+                const canBuy = (status === 'ready' || status === 'full') && item.buy > 0; 
+                return (
+                <div key={idx} style={{ minWidth: 140, background: theme.cardBg, border: theme.border, borderRadius: 8, padding: 10, display: "flex", flexDirection: "column", gap: 5 }}>
+                    <div style={{fontWeight: "bold", fontSize: 14, color: "#FFD700", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"}}>{item.nama}</div>
+                    <div style={{fontSize: 10, color: theme.subText, marginTop: -3}}>({item.targetKategori || item.kategori})</div>
+                    <div style={{fontSize: 11, color: status === 'full' ? '#4caf50' : status === 'kosong' ? '#f44336' : '#ff9800'}}>{statusLabel(item.status)}</div>
+                    <div style={{marginTop: "auto"}}>
+                        <button onClick={() => canBuy && addToCart(item, 'buy')} disabled={!canBuy} style={{...styles.btn, fontSize: 11, width: "100%", background: canBuy ? theme.accent : "#555", opacity: canBuy ? 1 : 0.7, cursor: canBuy ? "pointer" : "not-allowed"}}>
+                            {canBuy ? <span>Beli {item.buy.toLocaleString('id-ID')} 🪙</span> : (status === 'kosong' ? "Stok Habis" : "N/A")}
+                        </button>
+                    </div>
+                </div>
+                )})}
+            </div>
+        </div>
+        )}
 
-        {/* FILTER & SEARCH */}<div style={{ display: "flex", gap: 10, marginBottom: 20, overflowX: "auto", paddingBottom: 5 }}>{categories.map(c => (<button key={c} onClick={() => setCategory(c)} style={{ padding: "8px 16px", borderRadius: 20, border: "none", background: category === c ? theme.accent : theme.cardBg, color: category === c ? "#fff" : theme.text, whiteSpace: "nowrap", cursor: "pointer", border: category === c ? "none" : theme.border }}>{c}</button>))}</div><input placeholder="Cari item..." value={search} onChange={e => setSearch(e.target.value)} style={styles.input} />
+        {/* FILTER & SEARCH */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 20, overflowX: "auto", paddingBottom: 5 }}>
+            {categories.map(c => (
+                <button key={c} onClick={() => setCategory(c)} style={{ padding: "8px 16px", borderRadius: 20, border: "none", background: category === c ? theme.accent : theme.cardBg, color: category === c ? "#fff" : theme.text, whiteSpace: "nowrap", cursor: "pointer", border: category === c ? "none" : theme.border }}>{c}</button>
+            ))}
+        </div>
+        <input placeholder="Cari item..." value={search} onChange={e => setSearch(e.target.value)} style={styles.input} />
 
         {/* LIST ITEM TOKO */}
         <div style={styles.grid}>
@@ -381,15 +544,116 @@ export default function Page() {
               <div style={{fontWeight: "bold", fontSize: 16, color: "#FFD700"}}>{item.nama}<span style={{fontSize: 10, display:"block", color: theme.subText, fontWeight:"normal"}}>({item.kategori})</span></div>
               <div style={{fontSize: 12, color: status === 'full' ? '#4caf50' : status === 'kosong' ? '#f44336' : '#ff9800'}}>{statusLabel(item.status)}</div>
               <div style={{marginTop: "auto"}}>
-                  <button onClick={() => canBuy && addToCart(item, 'buy')} disabled={!canBuy} style={{...styles.btn, width: "100%", marginBottom: 4, background: canBuy ? theme.accent : "#555", opacity: canBuy ? 1 : 0.6, cursor: canBuy ? "pointer" : "not-allowed"}}>{canBuy ? <span>Beli <span style={{color: "white", fontWeight: "bold"}}>{item.buy.toLocaleString('id-ID')}</span> 🪙</span> : (status === 'take' ? "Stok Habis" : "Tidak Tersedia")}</button>
-                  <button onClick={() => canSell && addToCart(item, 'sell')} disabled={!canSell} style={{...styles.btn, width: "100%", background: canSell ? "#333" : "#222", border: "1px solid #555", opacity: canSell ? 1 : 0.5, cursor: canSell ? "pointer" : "not-allowed"}}>{canSell ? <span>Jual {item.sell.toLocaleString('id-ID')} 🪙</span> : (status === 'full' ? "Toko Penuh" : "Jual N/A")}</button>
+                  <button onClick={() => canBuy && addToCart(item, 'buy')} disabled={!canBuy} style={{...styles.btn, width: "100%", marginBottom: 4, background: canBuy ? theme.accent : "#555", opacity: canBuy ? 1 : 0.6, cursor: canBuy ? "pointer" : "not-allowed"}}>
+                      {canBuy ? <span>Beli <span style={{color: "white", fontWeight: "bold"}}>{item.buy.toLocaleString('id-ID')}</span> 🪙</span> : (status === 'take' ? "Stok Habis" : "Tidak Tersedia")}
+                  </button>
+                  <button onClick={() => canSell && addToCart(item, 'sell')} disabled={!canSell} style={{...styles.btn, width: "100%", background: canSell ? "#333" : "#222", border: "1px solid #555", opacity: canSell ? 1 : 0.5, cursor: canSell ? "pointer" : "not-allowed"}}>
+                      {canSell ? <span>Jual {item.sell.toLocaleString('id-ID')} 🪙</span> : (status === 'full' ? "Toko Penuh" : "Jual N/A")}
+                  </button>
               </div>
             </div>
           )})}
         </div>
       </main>
+      [PART 6 OF 6]
+      {/* === CALCULATOR MODAL (NEW FEATURE) === */}
+      {calcOpen && (
+        <div style={styles.modalOverlay}>
+            <div style={{...styles.modalContent, background: "#1a1a1a", borderTop: "2px solid #FFD700"}}>
+                <div style={{display:"flex", justifyContent:"space-between", marginBottom: 20}}>
+                    <h2 style={{margin:0, color: "#FFD700", display:"flex", alignItems:"center", gap: 10}}>
+                        🧮 Training Planner <span style={{fontSize: 10, background: "#333", padding:"2px 6px", borderRadius:4, color:"#fff"}}>v2.1</span>
+                    </h2>
+                    <button onClick={()=>setCalcOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button>
+                </div>
 
-      {/* === PASAR WARGA MODAL (INLINE FIX) === */}
+                {/* INPUT SECTION */}
+                <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10}}>
+                    <div>
+                        <label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Base Level</label>
+                        <input type="number" placeholder="ex: 300" value={calcInput.lvl} onChange={e => setCalcInput({...calcInput, lvl: e.target.value})} style={styles.input} />
+                    </div>
+                    <div>
+                        <label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Main Stat</label>
+                        <input type="number" placeholder="ex: 320" value={calcInput.stat} onChange={e => setCalcInput({...calcInput, stat: e.target.value})} style={styles.input} />
+                    </div>
+                </div>
+
+                <div style={{marginBottom: 10}}>
+                    <label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Extra Stat (Ring/Neck)</label>
+                    <input type="number" placeholder="ex: 10 (Kosongkan jika 0)" value={calcInput.extra} onChange={e => setCalcInput({...calcInput, extra: e.target.value})} style={styles.input} />
+                </div>
+
+                <div style={{marginBottom: 15}}>
+                    <label style={{fontSize: 11, color: "#aaa", marginBottom: 6, display:"block"}}>Weapon Attack</label>
+                    <div style={{display: "flex", gap: 8, overflowX: "auto", paddingBottom: 5}}>
+                        {[4, 5, 7, 9, 11, 15].map(atk => (
+                            <button key={atk} onClick={() => setCalcInput({...calcInput, wpn: atk})} 
+                            style={{
+                                flex: 1, minWidth: 40, padding: "8px 0", borderRadius: 6, fontWeight: "bold",
+                                background: calcInput.wpn === atk ? "#FFD700" : "#333",
+                                color: calcInput.wpn === atk ? "#000" : "#888",
+                                border: "none"
+                            }}>
+                                {atk}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div style={{marginBottom: 20, background: "rgba(255,255,255,0.05)", padding: 10, borderRadius: 8}}>
+                    <label style={{fontSize: 11, color: "#aaa", marginBottom: 8, display:"block"}}>Training Mode</label>
+                    <div style={{display: "flex", gap: 10, marginBottom: 10}}>
+                         <button onClick={() => setCalcInput({...calcInput, mode: 'afk'})} style={{flex: 1, padding: 8, borderRadius: 6, border: calcInput.mode === 'afk' ? "1px solid #FFD700" : "1px solid #444", background: calcInput.mode === 'afk' ? "rgba(255, 215, 0, 0.1)" : "transparent", color: calcInput.mode === 'afk' ? "#FFD700" : "#888"}}>
+                            💤 AFK (x1)
+                         </button>
+                         <button onClick={() => setCalcInput({...calcInput, mode: 'ptrain'})} style={{flex: 1, padding: 8, borderRadius: 6, border: calcInput.mode === 'ptrain' ? "1px solid #FF4444" : "1px solid #444", background: calcInput.mode === 'ptrain' ? "rgba(255, 68, 68, 0.1)" : "transparent", color: calcInput.mode === 'ptrain' ? "#FF4444" : "#888"}}>
+                            🔥 Ptrain (x4)
+                         </button>
+                    </div>
+                    {calcInput.mode === 'ptrain' && (
+                        <div style={{display:"flex", alignItems:"center", gap: 8, fontSize: 13, color: theme.text}}>
+                            <input type="checkbox" checked={calcInput.magic} onChange={e => setCalcInput({...calcInput, magic: e.target.checked})} style={{width: 16, height: 16}} />
+                            <span>Saya menggunakan Magic (Mage) 🧙‍♂️</span>
+                        </div>
+                    )}
+                </div>
+
+                <button onClick={handleCalculate} style={{width: "100%", padding: 12, borderRadius: 8, background: "linear-gradient(90deg, #25D366 0%, #128C7E 100%)", color: "white", fontWeight: "bold", border: "none", fontSize: 16, boxShadow: "0 4px 15px rgba(37, 211, 102, 0.3)"}}>
+                    HITUNG SEKARANG 🚀
+                </button>
+
+                {/* RESULT SECTION */}
+                {calcResult && (
+                    <div style={{marginTop: 20, padding: 15, borderRadius: 12, background: "linear-gradient(135deg, #222 0%, #111 100%)", border: "1px solid #444", position: "relative", overflow: "hidden"}}>
+                         <div style={{position: "absolute", top: -10, right: -10, fontSize: 80, opacity: 0.1}}>🎯</div>
+                         
+                         <div style={{textAlign: "center", marginBottom: 15}}>
+                            <div style={{fontSize: 12, color: "#888"}}>Rekomendasi Monster</div>
+                            <div style={{fontSize: 28, fontWeight: "900", color: "#FFD700", textShadow: "0 0 10px rgba(255, 215, 0, 0.3)"}}>
+                                {calcResult.target.toUpperCase()}
+                            </div>
+                            <div style={{fontSize: 11, color: "#4caf50"}}>Power Score: {calcResult.score}</div>
+                         </div>
+
+                         <div style={{display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.05)", padding: 10, borderRadius: 8}}>
+                             <div style={{fontSize: 24}}>🔜</div>
+                             <div style={{flex: 1}}>
+                                 <div style={{fontSize: 10, color: "#aaa"}}>Next Target:</div>
+                                 <div style={{fontSize: 14, fontWeight: "bold", color: "#fff"}}>{calcResult.next}</div>
+                             </div>
+                             <div style={{textAlign: "right"}}>
+                                 <div style={{fontSize: 10, color: "#aaa"}}>Butuh Stat:</div>
+                                 <div style={{fontSize: 16, fontWeight: "bold", color: "#FF4444"}}>+{calcResult.need}</div>
+                             </div>
+                         </div>
+                    </div>
+                )}
+            </div>
+        </div>
+      )}
+
+      {/* === PASAR WARGA MODAL (EXISTING) === */}
       {marketOpen && (
           <div style={styles.modalOverlay}><div style={styles.modalContent}><div style={{display:"flex", justifyContent:"space-between", marginBottom: 20}}><h2 style={{margin:0}}>🏪 Pasar Warga (v2.0)</h2><button onClick={()=>setMarketOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button></div><div style={styles.tabContainer}><button style={styles.tabBtn(marketTab === 'items')} onClick={()=>setMarketTab('items')}>⚔️ ITEM</button><button style={styles.tabBtn(marketTab === 'accounts')} onClick={()=>setMarketTab('accounts')}>👤 AKUN</button></div>
               <div style={marketTab === 'items' ? styles.grid : {...styles.grid, gridTemplateColumns: "1fr"}}>{marketTab === 'items' && titipanItems.map((item, idx) => (<div key={idx} style={{...styles.card, opacity: item.status?.toLowerCase() === 'sold' ? 0.6 : 1}}>{item.status?.toLowerCase() === 'sold' && <div style={{position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", color:"red", fontWeight:"bold", fontSize:20, zIndex:2}}>SOLD</div>}<div style={{height: 100, background: "#333", borderRadius: 4, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden"}}>{item.img ? <img src={item.img} alt={item.nama} style={{width:"100%", height:"100%", objectFit:"cover"}}/> : <span style={{fontSize:40}}>📦</span>}</div><div style={{fontWeight:"bold", color: "#FFD700", fontSize: 14}}>{item.nama}</div><div style={{fontSize: 12, color: theme.text}}>By: {item.owner}</div><div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 4}}><span style={{color: "#4caf50", fontWeight:"bold"}}>{item.harga}</span><span style={{fontSize: 10, padding: "2px 6px", borderRadius: 4, background: item.tipeHarga === 'Nego' ? '#FFA500' : '#2196F3', color:'white'}}>{item.tipeHarga}</span></div><button onClick={()=>contactOwner(item, 'item')} style={{...styles.btn, marginTop:8, fontSize: 12}}>💬 Chat Owner</button></div>))}
@@ -431,4 +695,4 @@ export default function Page() {
       )}
     </div>
   );
-}
+}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
