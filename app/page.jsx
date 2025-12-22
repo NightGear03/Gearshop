@@ -1,9 +1,8 @@
-[PART 1 OF 6]
 "use client";
 
 import { useEffect, useState } from "react";
 
-// === CONFIG URL BARU (UPDATED) ===
+// === CONFIG URL ===
 const AUCTION_API = "https://script.google.com/macros/s/AKfycbzeFaDBzNMNpl2JtFO4J0aRULheqf5_pD1fXs-l7ORPw6TQd9ZQVopXTNW7FsPwt6sF/exec";
 const STORE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1LFLYLmzl-YbYaYoFpEInQKGGzA9nuGzDA_0w9ulArJs/export?format=csv";
 
@@ -27,7 +26,7 @@ export default function Page() {
   const [titipanAccounts, setTitipanAccounts] = useState([]);
   const [titipMenuOpen, setTitipMenuOpen] = useState(false);
 
-  /* ===== STATE CALCULATOR (NEW FEATURE) ===== */
+  /* ===== STATE CALCULATOR (FITUR BARU) ===== */
   const [calcOpen, setCalcOpen] = useState(false);
   const [calcInput, setCalcInput] = useState({
     lvl: "",
@@ -61,7 +60,6 @@ export default function Page() {
   const [darkMode, setDarkMode] = useState(true);
   const [isStoreOpen, setIsStoreOpen] = useState(true);
   const [isMaintenance, setIsMaintenance] = useState(false);
-
   /* ===== LOAD ALL DATA ===== */
   useEffect(() => {
     async function loadData() {
@@ -101,7 +99,7 @@ export default function Page() {
     }
     loadData();
   }, []);
-[PART 2 OF 6]
+
   // -- Parser Toko Utama --
   const parseStoreData = (text) => {
     const rows = text.split(/\r?\n/).slice(1);
@@ -166,8 +164,7 @@ export default function Page() {
     });
     setTitipanAccounts(data);
   };
-
-  useEffect(() => {
+          useEffect(() => {
     fetchAuction(); 
     const interval = setInterval(fetchAuction, 5000);
     return () => clearInterval(interval);
@@ -235,6 +232,7 @@ export default function Page() {
         if (!amount || amount <= auctionData.currentBid) {
             alert(`Minimal Bid: ${(auctionData.currentBid + auctionData.increment).toLocaleString('id-ID')}`); return;
         }
+        // [FIX] Cek Over-Bid di Frontend
         if (amount >= auctionData.binPrice) {
              alert(`Bid ketinggian! Maksimal bid harus di bawah ${auctionData.binPrice.toLocaleString('id-ID')}. Gunakan tombol BIN jika ingin langsung beli.`); return;
         }
@@ -274,8 +272,7 @@ export default function Page() {
       const text = `Halo Admin, saya *${ign}* (WA: ${cleanWA}).\nSaya mau *BIN (Buy It Now)* item: *${auctionData.item}*.\n\nMohon kirimkan *Kode Konfirmasi BIN*-nya.\nSaya siap transaksi.`;
       window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
   };
-  [PART 3 OF 6]
-  /* ===== LOGIC CALCULATOR (BRAIN) ===== */
+        /* ===== LOGIC CALCULATOR (BRAIN - FITUR BARU) ===== */
   const handleCalculate = () => {
     const lvl = parseInt(calcInput.lvl);
     const stat = parseInt(calcInput.stat);
@@ -337,7 +334,7 @@ export default function Page() {
     });
   };
 
-  /* ===== UI HELPERS ===== */
+  /* ===== UI HELPERS & CART ===== */
   const toggleTheme = () => {
     const newMode = !darkMode; setDarkMode(newMode);
     localStorage.setItem("gearShopTheme", newMode ? "dark" : "light");
@@ -351,7 +348,6 @@ export default function Page() {
     return s;
   };
 
-  /* ===== CART LOGIC ===== */
   const addToCart = (item, mode) => {
     if (item.status?.toLowerCase() === "kosong") return;
     const key = `${item.nama}-${item.kategori}-${mode}`;
@@ -404,13 +400,12 @@ export default function Page() {
   "#1e1e1e" : "#fff", border: darkMode ? "1px solid #333" : "1px solid #ddd", modalBg: darkMode ?
   "#222" : "#fff", accent: "#B8860B", inputBg: darkMode ? "#2c2c2c" : "#fff", subText: darkMode ? "#aaa" : "#666", auctionBg: darkMode ?
   "linear-gradient(135deg, #2c0000 0%, #4a0000 100%)" : "linear-gradient(135deg, #fff0f0 0%, #ffe0e0 100%)" };
-  [PART 4 OF 6]
+
   const styles = {
       header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#1e293b", color: "#fff", borderBottom: theme.border, position: "sticky", top: 0, zIndex: 100 },
       cartIcon: { position: "relative", fontSize: 24, cursor: "pointer" },
       cartBadge: { position: "absolute", top: -5, right: -8, background: "red", color: "white", borderRadius: "50%", width: 18, height: 18, fontSize: 11, display: "flex", justifyContent: "center", alignItems: "center" },
       grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 },
-      
       card: { background: theme.cardBg, border: theme.border, borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 6 },
       input: { width: "100%", padding: 10, borderRadius: 6, border: theme.border, background: theme.inputBg, color: theme.text, marginBottom: 10, outline: "none" },
       btn: { background: theme.accent, color: "#fff", border: "none", padding: "8px", borderRadius: 4, cursor: "pointer", fontWeight: "bold" },
@@ -421,8 +416,7 @@ export default function Page() {
       fab: { position: "fixed", bottom: 30, right: 30, background: "#25D366", color: "white", width: 56, height: 56, borderRadius: "50%", display: "flex", justifyContent: "center", alignItems: "center", fontSize: 30, boxShadow: "0 4px 10px rgba(0,0,0,0.3)", cursor: "pointer", zIndex: 201 },
       fabMenu: { position: "fixed", bottom: 95, right: 30, display: "flex", flexDirection: "column", gap: 10, zIndex: 201 }
   };
-
-  if (!loading && isMaintenance) { return (<div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#121212", color: "#ffffff", fontFamily: "sans-serif", textAlign: "center", padding: "20px" }}><h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "10px", letterSpacing: "2px" }}>⚙️GEARSHOP⚙️</h1><h2 style={{ color: "#f1c40f", fontSize: "1.5rem", marginBottom: "20px", border: "2px solid #f1c40f", padding: "10px 20px", borderRadius: "8px", background: "rgba(241, 196, 15, 0.1)" }}>🚧 MAINTENANCE 🚧</h2><p style={{ fontSize: "1.1rem", marginBottom: "5px" }}>Silahkan cek dalam beberapa waktu lagi.</p><p style={{ fontSize: "1.1rem", fontWeight: "bold", marginTop: "20px" }}>Terimakasih 😁</p></div>);
+      if (!loading && isMaintenance) { return (<div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#121212", color: "#ffffff", fontFamily: "sans-serif", textAlign: "center", padding: "20px" }}><h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "10px", letterSpacing: "2px" }}>⚙️GEARSHOP⚙️</h1><h2 style={{ color: "#f1c40f", fontSize: "1.5rem", marginBottom: "20px", border: "2px solid #f1c40f", padding: "10px 20px", borderRadius: "8px", background: "rgba(241, 196, 15, 0.1)" }}>🚧 MAINTENANCE 🚧</h2><p style={{ fontSize: "1.1rem", marginBottom: "5px" }}>Silahkan cek dalam beberapa waktu lagi.</p><p style={{ fontSize: "1.1rem", fontWeight: "bold", marginTop: "20px" }}>Terimakasih 😁</p></div>);
   }
   
   if (!loading && !isStoreOpen) { return (<div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20, textAlign: "center" }}><img src="/logo.png" height={60} alt="Logo" style={{marginBottom: 20}} /><h2 style={{color: "#FF4444", fontSize: 28, marginBottom: 10}}>🔴 TOKO TUTUP</h2><p style={{color: theme.subText, maxWidth: 300, marginBottom: 30}}>Maaf ya, admin lagi istirahat. Cek lagi nanti ya!</p><button onClick={contactAdmin} style={{ background: "#25D366", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 50, fontSize: 16, fontWeight: "bold", cursor: "pointer" }}><span>💬 Chat WhatsApp Admin</span></button></div>);
@@ -436,7 +430,7 @@ export default function Page() {
               <img src="/logo.png" height={36} alt="Logo" />
           </div>
           <div style={{display:"flex", alignItems:"center", gap: 15}}>
-              {/* TOMBOL CALCULATOR BARU (Posisi Kiri Market) */}
+              {/* === TOMBOL CALCULATOR BARU (Posisi Kiri Market) === */}
               <div style={{cursor:"pointer", fontSize: 22}} onClick={() => setCalcOpen(true)}>🧮</div>
               
               {/* Tombol Market, Theme, Cart Lama */}
@@ -468,36 +462,35 @@ export default function Page() {
             <div style={{ padding: 16, textAlign:"center" }}>
                 <strong style={{fontSize: 22, display:"block", marginBottom: 5, color: theme.text}}>{auctionData.item}</strong>
                 <div style={{fontSize: 32, fontWeight:"bold", color: "#25D366", textShadow: "0 0 15px rgba(37, 211, 102, 0.4)", margin: "5px 0"}}>{formatGold(auctionData.currentBid)}</div>
-              [PART 5 OF 6]
-            {/* HISTORY LOG */}
-            <div style={{ marginTop: 15, background: "rgba(0,0,0,0.3)", borderRadius: 12, padding: "12px", textAlign: "left", border: "1px solid rgba(255,255,255,0.1)", maxHeight: 200, overflowY: "auto" }}>
-                <div style={{fontSize:11, color:"#aaa", marginBottom:5, textTransform:"uppercase", letterSpacing:1, borderBottom:"1px solid #555", paddingBottom:4}}>Riwayat Bid Terakhir</div>
-                {auctionData.history && auctionData.history.length > 0 ? (
-                    auctionData.history.map((h, i) => (
-                        <div key={i} style={{display:"flex", justifyContent:"space-between", padding:"6px 0", borderBottom: "1px dashed rgba(255,255,255,0.1)", fontSize:13}}>
-                            <span style={{color: h.type==="BIN"?"#FFD700":"#fff", fontWeight: h.type==="BIN"?"bold":"normal"}}>{h.name} {h.type==="BIN" && "⚡"}</span>
-                            <div style={{textAlign:"right", display:"flex", gap:10, alignItems:"center"}}>
-                                <span style={{color:"#25D366"}}>{formatGold(h.bid)}</span>
-                                <span style={{fontSize:10, color:"#888"}}>{h.time}</span>
+                
+                <div style={{ marginTop: 15, background: "rgba(0,0,0,0.3)", borderRadius: 12, padding: "12px", textAlign: "left", border: "1px solid rgba(255,255,255,0.1)", maxHeight: 200, overflowY: "auto" }}>
+                    <div style={{fontSize:11, color:"#aaa", marginBottom:5, textTransform:"uppercase", letterSpacing:1, borderBottom:"1px solid #555", paddingBottom:4}}>Riwayat Bid Terakhir</div>
+                    {auctionData.history && auctionData.history.length > 0 ? (
+                        auctionData.history.map((h, i) => (
+                            <div key={i} style={{display:"flex", justifyContent:"space-between", padding:"6px 0", borderBottom: "1px dashed rgba(255,255,255,0.1)", fontSize:13}}>
+                                <span style={{color: h.type==="BIN"?"#FFD700":"#fff", fontWeight: h.type==="BIN"?"bold":"normal"}}>{h.name} {h.type==="BIN" && "⚡"}</span>
+                                <div style={{textAlign:"right", display:"flex", gap:10, alignItems:"center"}}>
+                                    <span style={{color:"#25D366"}}>{formatGold(h.bid)}</span>
+                                    <span style={{fontSize:10, color:"#888"}}>{h.time}</span>
+                                </div>
                             </div>
-                        </div>
-                    ))
-                ) : (<div style={{textAlign:"center", color:"#777", padding:10}}>Belum ada bid. Jadilah yang pertama!</div>)}
-            </div>
+                        ))
+                    ) : (<div style={{textAlign:"center", color:"#777", padding:10}}>Belum ada bid. Jadilah yang pertama!</div>)}
+                </div>
 
-            {!auctionData.isEnded && (
-            <div style={{display:"flex", gap: 8, marginTop: 20}}>
-                <input type="number" placeholder="Nominal Bid..." value={bidAmount} onChange={e => setBidAmount(e.target.value)} style={{...styles.input, flex: 1, marginBottom: 0}} />
-                <button onClick={() => handleBid("BID")} disabled={bidLoading} style={{background: "#FF4444", color: "white", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold"}}>BID</button>
-                {auctionData.currentBid < auctionData.binPrice ? (
-                    <button onClick={() => handleBid("BIN")} disabled={bidLoading} style={{background: "#FFD700", color: "#000", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold"}}>BIN</button>
-                ) : (
-                    <button disabled style={{background: "#555", color: "#ccc", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold", cursor: "not-allowed"}}>BIN CLOSED</button>
+                {!auctionData.isEnded && (
+                <div style={{display:"flex", gap: 8, marginTop: 20}}>
+                    <input type="number" placeholder="Nominal Bid..." value={bidAmount} onChange={e => setBidAmount(e.target.value)} style={{...styles.input, flex: 1, marginBottom: 0}} />
+                    <button onClick={() => handleBid("BID")} disabled={bidLoading} style={{background: "#FF4444", color: "white", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold"}}>BID</button>
+                    {auctionData.currentBid < auctionData.binPrice ? (
+                        <button onClick={() => handleBid("BIN")} disabled={bidLoading} style={{background: "#FFD700", color: "#000", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold"}}>BIN</button>
+                    ) : (
+                        <button disabled style={{background: "#555", color: "#ccc", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold", cursor: "not-allowed"}}>BIN CLOSED</button>
+                    )}
+                </div>
                 )}
             </div>
             )}
-        </div>
-        )}
         </div>
         )}
 
@@ -555,8 +548,7 @@ export default function Page() {
           )})}
         </div>
       </main>
-      [PART 6 OF 6]
-      {/* === CALCULATOR MODAL (NEW FEATURE) === */}
+              {/* === CALCULATOR MODAL (FITUR BARU) === */}
       {calcOpen && (
         <div style={styles.modalOverlay}>
             <div style={{...styles.modalContent, background: "#1a1a1a", borderTop: "2px solid #FFD700"}}>
@@ -653,7 +645,7 @@ export default function Page() {
         </div>
       )}
 
-      {/* === PASAR WARGA MODAL (EXISTING) === */}
+      {/* === PASAR WARGA MODAL === */}
       {marketOpen && (
           <div style={styles.modalOverlay}><div style={styles.modalContent}><div style={{display:"flex", justifyContent:"space-between", marginBottom: 20}}><h2 style={{margin:0}}>🏪 Pasar Warga (v2.0)</h2><button onClick={()=>setMarketOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button></div><div style={styles.tabContainer}><button style={styles.tabBtn(marketTab === 'items')} onClick={()=>setMarketTab('items')}>⚔️ ITEM</button><button style={styles.tabBtn(marketTab === 'accounts')} onClick={()=>setMarketTab('accounts')}>👤 AKUN</button></div>
               <div style={marketTab === 'items' ? styles.grid : {...styles.grid, gridTemplateColumns: "1fr"}}>{marketTab === 'items' && titipanItems.map((item, idx) => (<div key={idx} style={{...styles.card, opacity: item.status?.toLowerCase() === 'sold' ? 0.6 : 1}}>{item.status?.toLowerCase() === 'sold' && <div style={{position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", color:"red", fontWeight:"bold", fontSize:20, zIndex:2}}>SOLD</div>}<div style={{height: 100, background: "#333", borderRadius: 4, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden"}}>{item.img ? <img src={item.img} alt={item.nama} style={{width:"100%", height:"100%", objectFit:"cover"}}/> : <span style={{fontSize:40}}>📦</span>}</div><div style={{fontWeight:"bold", color: "#FFD700", fontSize: 14}}>{item.nama}</div><div style={{fontSize: 12, color: theme.text}}>By: {item.owner}</div><div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 4}}><span style={{color: "#4caf50", fontWeight:"bold"}}>{item.harga}</span><span style={{fontSize: 10, padding: "2px 6px", borderRadius: 4, background: item.tipeHarga === 'Nego' ? '#FFA500' : '#2196F3', color:'white'}}>{item.tipeHarga}</span></div><button onClick={()=>contactOwner(item, 'item')} style={{...styles.btn, marginTop:8, fontSize: 12}}>💬 Chat Owner</button></div>))}
@@ -695,4 +687,5 @@ export default function Page() {
       )}
     </div>
   );
-}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
+                  }
+                
