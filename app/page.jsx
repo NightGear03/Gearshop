@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 // === CONFIG URL ===
-const AUCTION_API = "https://script.google.com/macros/s/AKfycbzeFaDBzNMNpl2JtFO4J0aRULheqf5_pD1fXs-l7ORPw6TQd9ZQVopXTNW7FsPwt6sF/exec";
+const AUCTION_API = "https://script.google.com/macros/s/AKfycbwmNQKVNEhq8iLg00GBCq9WSYEMWqBse5Lzo9zdc0sSDqCBn_eS8jp8XFdDs30tw2sr/exec";
 const STORE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1LFLYLmzl-YbYaYoFpEInQKGGzA9nuGzDA_0w9ulArJs/export?format=csv";
 
 // URL TITIPAN
