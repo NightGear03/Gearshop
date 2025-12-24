@@ -72,8 +72,7 @@ export default function Page() {
     cancelText: "Batal", 
     confirmText: "Ya, Lanjut" 
   });
-
-  /* ===== HELPERS BARU (SOUND & TOAST) ===== */
+    /* ===== HELPERS BARU (SOUND & TOAST) ===== */
   const playSound = (type) => {
     const audioMap = {
       success: "/sounds/success.mp3", // Pastikan file ada di folder public/sounds
@@ -194,8 +193,7 @@ export default function Page() {
     });
     setTitipanAccounts(data);
   };
-
-  /* ===== AUCTION LOOPS & TIMER ===== */
+          /* ===== AUCTION LOOPS & TIMER ===== */
   useEffect(() => {
     fetchAuction(); 
     const interval = setInterval(fetchAuction, 5000);
@@ -285,8 +283,7 @@ export default function Page() {
         setBidLoading(false); 
     }
   };
-
-  /* ===== LOGIC UTAMA: HANDLE BID (MODAL VERSION) ===== */
+      /* ===== LOGIC UTAMA: HANDLE BID (MODAL VERSION) ===== */
   const handleBid = async (action, code = null) => {
     // 1. Cek Racun (Banned Check)
     if (localStorage.getItem("gearshop_status") === "BANNED") {
@@ -427,8 +424,148 @@ export default function Page() {
         need: Math.max(0, Math.ceil(nextTarget.min - powerScore))
     });
   };
+        /* ===== LOGIC UTAMA: HANDLE BID (MODAL VERSION) ===== */
+  const handleBid = async (action, code = null) => {
+    // 1. Cek Racun (Banned Check)
+    if (localStorage.getItem("gearshop_status") === "BANNED") {
+      showToast("Akses Anda diblokir.", "error");
+      return;
+    }
 
-  /* ===== UI HELPERS & CART ===== */
+    // 2. Validasi Input Dasar
+    if (!ign || !waNumber) {
+      showToast("Wajib isi IGN dan WA dulu!", "error");
+      setCartOpen(true);
+      return;
+    }
+    if (!isValidWhatsApp(waNumber)) {
+      showToast("Nomor WA Tidak Valid (08xx only).", "error");
+      setCartOpen(true);
+      return;
+    }
+
+    const amount = action === "BIN" ? auctionData.binPrice : parseInt(bidAmount);
+
+    // 3. Logic BIN
+    if (action === "BIN" && !code) {
+        if (auctionData.currentBid >= auctionData.binPrice) {
+            showToast("Harga Bid sudah melewati harga BIN.", "error");
+            return;
+        }
+        setIsBinModalOpen(true); // Buka Modal Input Kode BIN
+        return;
+    }
+
+    // 4. Logic BID Biasa
+    if (action === "BID") {
+        if (!amount || amount <= auctionData.currentBid) {
+            showToast(`Minimal Bid: ${(auctionData.currentBid + auctionData.increment).toLocaleString('id-ID')}`, "error");
+            return;
+        }
+        if (amount >= auctionData.binPrice) {
+             showToast("Bid ketinggian! Gunakan tombol BIN.", "error");
+             return;
+        }
+        if ((amount - auctionData.currentBid) % auctionData.increment !== 0) {
+            showToast(`Bid harus kelipatan ${auctionData.increment.toLocaleString('id-ID')}`, "error");
+            return;
+        }
+
+        // PANGGIL MODAL KONFIRMASI (Ganti confirm biasa)
+        setModalConfig({
+          show: true,
+          title: "🔨 Konfirmasi Bid",
+          message: `Kamu akan melakukan Bid sebesar ${amount.toLocaleString('id-ID')} Gold. Yakin?`,
+          cancelText: "Batal",
+          confirmText: "GAS BID! 🚀",
+          onConfirm: () => executeBid(action, amount)
+        });
+        return;
+    }
+
+    // Eksekusi BIN jika ada kode (dari modal BIN)
+    if (action === "BIN" && code) {
+       executeBid(action, amount, code);
+    }
+  };
+
+  const requestBinCode = () => {
+      const cleanWA = waNumber.replace(/\D/g, '');
+      const text = `Halo Admin, saya *${ign}* (WA: ${cleanWA}).\nSaya mau *BIN (Buy It Now)* item: *${auctionData.item}*.\n\nMohon kirimkan *Kode Konfirmasi BIN*-nya.\nSaya siap transaksi.`;
+      window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
+  };
+
+  /* ===== LOGIC CALCULATOR (REALTIME) ===== */
+  useEffect(() => {
+    handleCalculate();
+  }, [calcInput]);
+
+  const handleCalculate = () => {
+    const lvl = parseInt(calcInput.lvl) || 0;
+    const stat = parseInt(calcInput.stat) || 0;
+    const extra = parseInt(calcInput.extra) || 0;
+    const wpn = parseInt(calcInput.wpn) || 0;
+
+    if (lvl === 0 || stat === 0) {
+        setCalcResult(null);
+        return;
+    }
+
+    let effectiveStat = stat;
+    if (calcInput.mode === 'ptrain') {
+        effectiveStat = calcInput.magic ? (stat * 1.35) : (stat * 1.2);
+    }
+
+    const powerScore = effectiveStat + extra + wpn + Math.floor(lvl / 2);
+    const MONSTER_DB = [
+      { name: "Rat (Lv.1)", min: 14 },
+      { name: "Rat (Lv.3)", min: 22 },
+      { name: "Crow (Lv.6)", min: 33 },
+      { name: "Wolf (Lv.9)", min: 42 },
+      { name: "Mummy", min: 55 },
+      { name: "Pharaoh", min: 105 },
+      { name: "Assassin", min: 145 },
+      { name: "Zombie", min: 170 },
+      { name: "Skeleton", min: 195 },
+      { name: "Skeleton Warrior", min: 265 },
+      { name: "Vampire", min: 345 },
+      { name: "Drow Assassin", min: 450 },
+      { name: "Lizard Warrior", min: 610 },
+      { name: "Lizard Captain", min: 730 },
+      { name: "Minotaur", min: 940 },
+      { name: "Minotaur (High)", min: 1150 },
+      { name: "Demon", min: 1400 }
+    ];
+
+    if (powerScore < 14) {
+        setCalcResult({
+            score: Math.floor(powerScore),
+            target: "❌ Belum Kuat",
+            next: "Rat (Lv.1)",
+            need: Math.ceil(14 - powerScore)
+        });
+        return;
+    }
+
+    let currentTarget = MONSTER_DB[0];
+    let nextTarget = { name: "MAX LEVEL", min: powerScore };
+    for (let i = 0; i < MONSTER_DB.length; i++) {
+        if (powerScore >= MONSTER_DB[i].min) {
+            currentTarget = MONSTER_DB[i];
+            nextTarget = MONSTER_DB[i+1] || { name: "MAX LEVEL", min: powerScore };
+        } else {
+            break;
+        }
+    }
+
+    setCalcResult({
+        score: Math.floor(powerScore),
+        target: currentTarget.name,
+        next: nextTarget.name,
+        need: Math.max(0, Math.ceil(nextTarget.min - powerScore))
+    });
+  };
+        /* ===== UI HELPERS & CART ===== */
   const toggleTheme = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
@@ -517,8 +654,7 @@ export default function Page() {
       fab: { position: "fixed", bottom: 30, right: 30, background: "#25D366", color: "white", width: 56, height: 56, borderRadius: "50%", display: "flex", justifyContent: "center", alignItems: "center", fontSize: 30, boxShadow: "0 4px 10px rgba(0,0,0,0.3)", cursor: "pointer", zIndex: 201 },
       fabMenu: { position: "fixed", bottom: 95, right: 30, display: "flex", flexDirection: "column", gap: 10, zIndex: 201 }
   };
-
-  /* ===== TAMPILAN MAINTENANCE & TOKO TUTUP ===== */
+                    /* ===== TAMPILAN MAINTENANCE & TOKO TUTUP ===== */
   if (!loading && isMaintenance) { 
       return (
         <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#121212", color: "#ffffff", fontFamily: "sans-serif", textAlign: "center", padding: "20px" }}>
@@ -664,8 +800,7 @@ export default function Page() {
           )})}
         </div>
       </main>
-
-            {/* === CALCULATOR MODAL === */}
+                            {/* === CALCULATOR MODAL === */}
       {calcOpen && (
         <div style={styles.modalOverlay}>
             <div style={{...styles.modalContent, background: "#1a1a1a", borderTop: "2px solid #FFD700"}}>
@@ -760,5 +895,5 @@ export default function Page() {
 
     </div>
   );
-}                                                                                                                    
-                                                                                                                                                                                                                                                                                                                                                            
+              }
+          
