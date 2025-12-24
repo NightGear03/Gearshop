@@ -26,7 +26,7 @@ export default function Page() {
   const [titipanAccounts, setTitipanAccounts] = useState([]);
   const [titipMenuOpen, setTitipMenuOpen] = useState(false);
 
-  /* ===== STATE CALCULATOR (FITUR BARU) ===== */
+  /* ===== STATE CALCULATOR ===== */
   const [calcOpen, setCalcOpen] = useState(false);
   const [calcInput, setCalcInput] = useState({
     lvl: "",
@@ -52,7 +52,7 @@ export default function Page() {
   const [timeLeft, setTimeLeft] = useState("Loading...");
   const [isAuctionExpanded, setIsAuctionExpanded] = useState(false);
 
-  // === STATE BARU BUAT BIN MODAL ===
+  /* ===== STATE BIN (MODAL KODE) ===== */
   const [isBinModalOpen, setIsBinModalOpen] = useState(false);
   const [binCode, setBinCode] = useState("");
 
@@ -61,7 +61,8 @@ export default function Page() {
   const [isStoreOpen, setIsStoreOpen] = useState(true);
   const [isMaintenance, setIsMaintenance] = useState(false);
 
-  /* ===== STATE UI MODERN (TOAST & MODAL) - BARU ===== */
+  /* ===== STATE UI MODERN (TOAST & MODAL) ===== */
+  // Ini State baru buat Toast & Custom Modal
   const [toast, setToast] = useState({ show: false, msg: "", type: "success" });
   const [modalConfig, setModalConfig] = useState({ 
     show: false, 
@@ -71,10 +72,11 @@ export default function Page() {
     cancelText: "Batal", 
     confirmText: "Ya, Lanjut" 
   });
+
   /* ===== HELPERS BARU (SOUND & TOAST) ===== */
   const playSound = (type) => {
     const audioMap = {
-      success: "/sounds/success.mp3", // Pastikan file ada
+      success: "/sounds/success.mp3", // Pastikan file ada di folder public/sounds
       error: "/sounds/error.mp3",
       popup: "/sounds/popup.mp3"
     };
@@ -192,7 +194,8 @@ export default function Page() {
     });
     setTitipanAccounts(data);
   };
-    /* ===== AUCTION LOOPS & TIMER ===== */
+
+  /* ===== AUCTION LOOPS & TIMER ===== */
   useEffect(() => {
     fetchAuction(); 
     const interval = setInterval(fetchAuction, 5000);
@@ -282,9 +285,10 @@ export default function Page() {
         setBidLoading(false); 
     }
   };
+
   /* ===== LOGIC UTAMA: HANDLE BID (MODAL VERSION) ===== */
   const handleBid = async (action, code = null) => {
-    // 1. Cek Racun
+    // 1. Cek Racun (Banned Check)
     if (localStorage.getItem("gearshop_status") === "BANNED") {
       showToast("Akses Anda diblokir.", "error");
       return;
@@ -423,7 +427,8 @@ export default function Page() {
         need: Math.max(0, Math.ceil(nextTarget.min - powerScore))
     });
   };
-      /* ===== UI HELPERS & CART ===== */
+
+  /* ===== UI HELPERS & CART ===== */
   const toggleTheme = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
@@ -512,9 +517,29 @@ export default function Page() {
       fab: { position: "fixed", bottom: 30, right: 30, background: "#25D366", color: "white", width: 56, height: 56, borderRadius: "50%", display: "flex", justifyContent: "center", alignItems: "center", fontSize: 30, boxShadow: "0 4px 10px rgba(0,0,0,0.3)", cursor: "pointer", zIndex: 201 },
       fabMenu: { position: "fixed", bottom: 95, right: 30, display: "flex", flexDirection: "column", gap: 10, zIndex: 201 }
   };
-            if (!loading && isMaintenance) { return (<div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#121212", color: "#ffffff", fontFamily: "sans-serif", textAlign: "center", padding: "20px" }}><h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "10px", letterSpacing: "2px" }}>⚙️GEARSHOP⚙️</h1><h2 style={{ color: "#f1c40f", fontSize: "1.5rem", marginBottom: "20px", border: "2px solid #f1c40f", padding: "10px 20px", borderRadius: "8px", background: "rgba(241, 196, 15, 0.1)" }}>🚧 MAINTENANCE 🚧</h2><p style={{ fontSize: "1.1rem", marginBottom: "5px" }}>Silahkan cek dalam beberapa waktu lagi.</p><p style={{ fontSize: "1.1rem", fontWeight: "bold", marginTop: "20px" }}>Terimakasih 😁</p></div>); }
+
+  /* ===== TAMPILAN MAINTENANCE & TOKO TUTUP ===== */
+  if (!loading && isMaintenance) { 
+      return (
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#121212", color: "#ffffff", fontFamily: "sans-serif", textAlign: "center", padding: "20px" }}>
+            <h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "10px", letterSpacing: "2px" }}>⚙️GEARSHOP⚙️</h1>
+            <h2 style={{ color: "#f1c40f", fontSize: "1.5rem", marginBottom: "20px", border: "2px solid #f1c40f", padding: "10px 20px", borderRadius: "8px", background: "rgba(241, 196, 15, 0.1)" }}>🚧 MAINTENANCE 🚧</h2>
+            <p style={{ fontSize: "1.1rem", marginBottom: "5px" }}>Silahkan cek dalam beberapa waktu lagi.</p>
+            <p style={{ fontSize: "1.1rem", fontWeight: "bold", marginTop: "20px" }}>Terimakasih 😁</p>
+        </div>
+      ); 
+  }
   
-  if (!loading && !isStoreOpen) { return (<div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20, textAlign: "center" }}><img src="/logo.png" height={60} alt="Logo" style={{marginBottom: 20}} /><h2 style={{color: "#FF4444", fontSize: 28, marginBottom: 10}}>🔴 TOKO TUTUP</h2><p style={{color: theme.subText, maxWidth: 300, marginBottom: 30}}>Maaf ya, admin lagi istirahat. Cek lagi nanti ya!</p><button onClick={contactAdmin} style={{ background: "#25D366", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 50, fontSize: 16, fontWeight: "bold", cursor: "pointer" }}><span>💬 Chat WhatsApp Admin</span></button></div>); }
+  if (!loading && !isStoreOpen) { 
+      return (
+        <div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20, textAlign: "center" }}>
+            <img src="/logo.png" height={60} alt="Logo" style={{marginBottom: 20}} />
+            <h2 style={{color: "#FF4444", fontSize: 28, marginBottom: 10}}>🔴 TOKO TUTUP</h2>
+            <p style={{color: theme.subText, maxWidth: 300, marginBottom: 30}}>Maaf ya, admin lagi istirahat. Cek lagi nanti ya!</p>
+            <button onClick={contactAdmin} style={{ background: "#25D366", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 50, fontSize: 16, fontWeight: "bold", cursor: "pointer" }}><span>💬 Chat WhatsApp Admin</span></button>
+        </div>
+      ); 
+  }
 
   return (
     <div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, fontFamily: "sans-serif", paddingBottom: 80 }}>
@@ -640,7 +665,7 @@ export default function Page() {
         </div>
       </main>
 
-      {/* === CALCULATOR MODAL === */}
+            {/* === CALCULATOR MODAL === */}
       {calcOpen && (
         <div style={styles.modalOverlay}>
             <div style={{...styles.modalContent, background: "#1a1a1a", borderTop: "2px solid #FFD700"}}>
@@ -650,7 +675,6 @@ export default function Page() {
                     </h2>
                     <button onClick={()=>setCalcOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button>
                 </div>
-                {/* Isi Calculator sama seperti sebelumnya... */}
                 <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10}}>
                     <div><label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Base Level</label><input type="number" placeholder="ex: 300" value={calcInput.lvl} onChange={e => setCalcInput({...calcInput, lvl: e.target.value})} style={styles.input} /></div>
                     <div><label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Main Stat</label><input type="number" placeholder="ex: 320" value={calcInput.stat} onChange={e => setCalcInput({...calcInput, stat: e.target.value})} style={styles.input} /></div>
@@ -696,7 +720,8 @@ export default function Page() {
            </div>
         </div>
       )}
-       {/* CONFIRMATION MODAL (MODAL LAMA BUAT CHECKOUT) */}
+
+     {/* CONFIRMATION MODAL (MODAL LAMA BUAT CHECKOUT) */}
       {confirmOpen && (
           <div onClick={(e) => { if (e.target === e.currentTarget) setConfirmOpen(false); }} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
               <div style={{ background: theme.cardBg, width: "100%", maxWidth: 400, borderRadius: 12, padding: 20, border: "1px solid #555" }}><h2 style={{marginTop: 0, textAlign: "center"}}>📝 Konfirmasi Order</h2><div style={{background: "rgba(255,255,255,0.05)\", padding: 10, borderRadius: 8, margin: "15px 0", maxHeight: 200, overflowY: "auto"}}>{cart.map((c, i) => (<div key={i} style={{fontSize: 14, marginBottom: 5, borderBottom: "1px dashed #444", paddingBottom: 5}}>{c.nama} <span style={{fontSize:10}}>({c.mode})</span> <div style={{float: "right"}}>x{c.qty}</div></div>))}</div><div style={{display:"flex", justifyContent:"space-between", fontSize: 18, fontWeight:"bold", marginBottom: 20, borderTop: "1px solid #555", paddingTop: 10}}><span>Total Bayar:</span><span style={{color: "#FFD700"}}>{totalPrice.toLocaleString('id-ID')} 🪙</span></div><div style={{display: "flex", gap: 10}}><button onClick={() => setConfirmOpen(false)} style={{flex: 1, padding: 12, background: "transparent", border: "1px solid #555", color: theme.text, borderRadius: 8, cursor: "pointer"}}>Batal</button><button onClick={processToWA} style={{flex: 1, padding: 12, background: "#25D366", border: "none", color: "white", borderRadius: 8, fontWeight: "bold", cursor: "pointer"}}>Lanjut WA ➤</button></div></div>
@@ -735,4 +760,5 @@ export default function Page() {
 
     </div>
   );
-}
+}                                                                                                                    
+                                                                                                                                                                                                                                                                                                                                                            
