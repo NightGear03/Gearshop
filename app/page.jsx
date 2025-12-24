@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 // === CONFIG URL ===
-const AUCTION_API = "https://script.google.com/macros/s/AKfycbzT0kRbTLnpC5IGGyjdzu87ztwTRzoGxJmPnr8xM2zNKsYsmMpSMnZJcYGhvaLOe0hB/exec";
+const AUCTION_API = "https://script.google.com/macros/s/AKfycbwmNQKVNEhq8iLg00GBCq9WSYEMWqBse5Lzo9zdc0sSDqCBn_eS8jp8XFdDs30tw2sr/exec";
 const STORE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1LFLYLmzl-YbYaYoFpEInQKGGzA9nuGzDA_0w9ulArJs/export?format=csv";
 
 // URL TITIPAN
@@ -60,6 +60,35 @@ export default function Page() {
   const [darkMode, setDarkMode] = useState(true);
   const [isStoreOpen, setIsStoreOpen] = useState(true);
   const [isMaintenance, setIsMaintenance] = useState(false);
+
+  /* ===== STATE UI MODERN (TOAST & MODAL) - BARU ===== */
+  const [toast, setToast] = useState({ show: false, msg: "", type: "success" });
+  const [modalConfig, setModalConfig] = useState({ 
+    show: false, 
+    title: "", 
+    message: "", 
+    onConfirm: null, 
+    cancelText: "Batal", 
+    confirmText: "Ya, Lanjut" 
+  });
+  /* ===== HELPERS BARU (SOUND & TOAST) ===== */
+  const playSound = (type) => {
+    const audioMap = {
+      success: "/sounds/success.mp3", // Pastikan file ada
+      error: "/sounds/error.mp3",
+      popup: "/sounds/popup.mp3"
+    };
+    if (audioMap[type]) {
+      new Audio(audioMap[type]).play().catch(e => console.log("Audio play failed", e));
+    }
+  };
+
+  const showToast = (msg, type = "success") => {
+    setToast({ show: true, msg, type });
+    playSound(type === "error" ? "error" : "popup");
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+  };
+
   /* ===== LOAD ALL DATA ===== */
   useEffect(() => {
     async function loadData() {
@@ -84,15 +113,16 @@ export default function Page() {
         const savedTheme = localStorage.getItem("gearShopTheme");
         if (savedTheme) setDarkMode(savedTheme === "dark");
         
-        // Cek Magic Link Admin
+        // Cek Magic Link Admin (UPDATED TO TOAST)
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('kunci') === "firman123") {
             localStorage.setItem("gearshop_admin", "true");
-            alert("Mode Admin Aktif! Selamat bertugas.");
+            showToast("Mode Admin Aktif! Selamat bertugas.", "success");
         }
 
       } catch (err) {
         console.error("Fetch error:", err);
+        showToast("Gagal memuat data toko.", "error");
       } finally {
         setLoading(false);
       }
@@ -127,10 +157,8 @@ export default function Page() {
     if (statusToko === "TUTUP") {
         setIsStoreOpen(false); setIsMaintenance(false);
     } else if (statusToko === "MT") {
-        if (isAdmin) { setIsStoreOpen(true); setIsMaintenance(false);
-        }
-        else { setIsStoreOpen(false); setIsMaintenance(true);
-        }
+        if (isAdmin) { setIsStoreOpen(true); setIsMaintenance(false); }
+        else { setIsStoreOpen(false); setIsMaintenance(true); }
     } else {
         setIsStoreOpen(true); setIsMaintenance(false);
     }
@@ -164,12 +192,13 @@ export default function Page() {
     });
     setTitipanAccounts(data);
   };
-          useEffect(() => {
+    /* ===== AUCTION LOOPS & TIMER ===== */
+  useEffect(() => {
     fetchAuction(); 
     const interval = setInterval(fetchAuction, 5000);
     return () => clearInterval(interval);
   }, []);
-  
+
   useEffect(() => {
     if (!auctionData || !auctionData.endTime) return;
     const timer = setInterval(() => {
@@ -191,11 +220,10 @@ export default function Page() {
         const res = await fetch(`${AUCTION_API}?t=${new Date().getTime()}`);
         const data = await res.json();
         setAuctionData(data);
-    } catch (error) { console.error("Err lelang", error);
-    }
+    } catch (error) { console.error("Err lelang", error); }
   }
 
-  /* ===== HELPERS BARU (IP & VALIDASI) ===== */
+  /* ===== HELPERS (IP & VALIDASI) ===== */
   const formatWaNumber = (num) => {
     if (!num) return null;
     let clean = num.replace(/\D/g, ''); 
@@ -203,46 +231,20 @@ export default function Page() {
     if (clean.startsWith('8')) return '62' + clean;
     return clean;
   };
+
   const isValidWhatsApp = (phoneNumber) => /^08[0-9]{8,13}$/.test(phoneNumber);
 
   async function getMyIP() {
-    try { const response = await fetch('https://api.ipify.org?format=json');
-    const data = await response.json(); return data.ip; } catch (error) { return "UNKNOWN";
-    }
+    try { 
+      const response = await fetch('https://api.ipify.org?format=json');
+      const data = await response.json(); 
+      return data.ip; 
+    } catch (error) { return "UNKNOWN"; }
   }
 
-  /* ===== ACTION HANDLERS BARU (BIN MODAL & VALIDASI) ===== */
-  const handleBid = async (action, code = null) => {
-    // 1. Cek Racun & Validasi
-    if (localStorage.getItem("gearshop_status") === "BANNED") { alert("Akses Anda diblokir."); return; }
-    if (!ign || !waNumber) { alert("Wajib isi IGN dan WA di keranjang!"); setCartOpen(true); return; }
-    if (!isValidWhatsApp(waNumber)) { alert("Nomor WA Tidak Valid (08xx only)."); setCartOpen(true); return; }
-
-    const amount = action === "BIN" ? auctionData.binPrice : parseInt(bidAmount);
-    // 2. LOGIC BIN: BUKA MODAL DULU
-    if (action === "BIN" && !code) {
-        if (auctionData.currentBid >= auctionData.binPrice) {
-            alert("Harga Bid sudah melewati harga BIN."); return;
-        }
-        setIsBinModalOpen(true); // Buka Modal
-        return; // Stop di sini
-    }
-
-    if (action === "BID") {
-        if (!amount || amount <= auctionData.currentBid) {
-            alert(`Minimal Bid: ${(auctionData.currentBid + auctionData.increment).toLocaleString('id-ID')}`); return;
-        }
-        // [FIX] Cek Over-Bid di Frontend
-        if (amount >= auctionData.binPrice) {
-             alert(`Bid ketinggian! Maksimal bid harus di bawah ${auctionData.binPrice.toLocaleString('id-ID')}. Gunakan tombol BIN jika ingin langsung beli.`); return;
-        }
-        if ((amount - auctionData.currentBid) % auctionData.increment !== 0) {
-            alert(`Bid harus kelipatan ${auctionData.increment.toLocaleString('id-ID')}`); return;
-        }
-        if (!confirm(`Yakin Bid ${formatGold(amount)}?`)) return;
-    }
-    
-    // 3. PROSES KIRIM DATA
+  /* ===== ACTION HANDLERS BARU (EXECUTE BID) ===== */
+  // Fungsi ini dipanggil setelah user klik "YA" di Modal Konfirmasi
+  const executeBid = async (action, amount, code = null) => {
     setBidLoading(true);
     try {
         const userIP = await getMyIP();
@@ -255,16 +257,94 @@ export default function Page() {
         const result = await response.json();
 
         if (result.status === "BLOCKED") {
-            localStorage.setItem("gearshop_status", "BANNED"); alert("ANDA DIBLOKIR!");
+            localStorage.setItem("gearshop_status", "BANNED");
+            setModalConfig({
+              show: true, 
+              title: "⛔ AKSES DIBLOKIR",
+              message: "Sistem mendeteksi aktivitas tidak wajar. Akses Anda ditutup permanen.",
+              confirmText: "Tutup",
+              cancelText: "",
+              onConfirm: () => window.location.reload()
+            });
         } else if (result.status === "SUCCESS") {
-             setBidAmount(""); setBinCode(""); setIsBinModalOpen(false);
+             playSound("success");
+             setBidAmount("");
+             setBinCode(""); 
+             setIsBinModalOpen(false);
+             showToast(result.message, "success"); // Pake Toast
              setTimeout(fetchAuction, 1500); 
-             alert(result.message);
         } else {
-             alert(result.message);
+             showToast(result.message, "error"); // Pake Toast
         }
-    } catch (error) { alert("Koneksi Error");
-    } finally { setBidLoading(false); }
+    } catch (error) { 
+        showToast("Koneksi Error", "error");
+    } finally { 
+        setBidLoading(false); 
+    }
+  };
+  /* ===== LOGIC UTAMA: HANDLE BID (MODAL VERSION) ===== */
+  const handleBid = async (action, code = null) => {
+    // 1. Cek Racun
+    if (localStorage.getItem("gearshop_status") === "BANNED") {
+      showToast("Akses Anda diblokir.", "error");
+      return;
+    }
+
+    // 2. Validasi Input Dasar
+    if (!ign || !waNumber) {
+      showToast("Wajib isi IGN dan WA dulu!", "error");
+      setCartOpen(true);
+      return;
+    }
+    if (!isValidWhatsApp(waNumber)) {
+      showToast("Nomor WA Tidak Valid (08xx only).", "error");
+      setCartOpen(true);
+      return;
+    }
+
+    const amount = action === "BIN" ? auctionData.binPrice : parseInt(bidAmount);
+
+    // 3. Logic BIN
+    if (action === "BIN" && !code) {
+        if (auctionData.currentBid >= auctionData.binPrice) {
+            showToast("Harga Bid sudah melewati harga BIN.", "error");
+            return;
+        }
+        setIsBinModalOpen(true); // Buka Modal Input Kode BIN
+        return;
+    }
+
+    // 4. Logic BID Biasa
+    if (action === "BID") {
+        if (!amount || amount <= auctionData.currentBid) {
+            showToast(`Minimal Bid: ${(auctionData.currentBid + auctionData.increment).toLocaleString('id-ID')}`, "error");
+            return;
+        }
+        if (amount >= auctionData.binPrice) {
+             showToast("Bid ketinggian! Gunakan tombol BIN.", "error");
+             return;
+        }
+        if ((amount - auctionData.currentBid) % auctionData.increment !== 0) {
+            showToast(`Bid harus kelipatan ${auctionData.increment.toLocaleString('id-ID')}`, "error");
+            return;
+        }
+
+        // PANGGIL MODAL KONFIRMASI (Ganti confirm biasa)
+        setModalConfig({
+          show: true,
+          title: "🔨 Konfirmasi Bid",
+          message: `Kamu akan melakukan Bid sebesar ${amount.toLocaleString('id-ID')} Gold. Yakin?`,
+          cancelText: "Batal",
+          confirmText: "GAS BID! 🚀",
+          onConfirm: () => executeBid(action, amount)
+        });
+        return;
+    }
+
+    // Eksekusi BIN jika ada kode (dari modal BIN)
+    if (action === "BIN" && code) {
+       executeBid(action, amount, code);
+    }
   };
 
   const requestBinCode = () => {
@@ -272,38 +352,31 @@ export default function Page() {
       const text = `Halo Admin, saya *${ign}* (WA: ${cleanWA}).\nSaya mau *BIN (Buy It Now)* item: *${auctionData.item}*.\n\nMohon kirimkan *Kode Konfirmasi BIN*-nya.\nSaya siap transaksi.`;
       window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
   };
-          /* ===== LOGIC CALCULATOR (REALTIME & JUJUR) ===== */
-  
-  // 1. Auto-Hitung setiap input berubah (Gak perlu pencet tombol lagi)
+
+  /* ===== LOGIC CALCULATOR (REALTIME) ===== */
   useEffect(() => {
     handleCalculate();
-  }, [calcInput]); 
+  }, [calcInput]);
 
   const handleCalculate = () => {
-    // Validasi input: Kalau kosong dianggap 0
     const lvl = parseInt(calcInput.lvl) || 0;
     const stat = parseInt(calcInput.stat) || 0;
     const extra = parseInt(calcInput.extra) || 0;
     const wpn = parseInt(calcInput.wpn) || 0;
-    
-    // Jangan hitung kalau data nol semua
+
     if (lvl === 0 || stat === 0) {
         setCalcResult(null);
         return;
     }
 
-    // 1. Hitung Effective Stat
     let effectiveStat = stat;
     if (calcInput.mode === 'ptrain') {
         effectiveStat = calcInput.magic ? (stat * 1.35) : (stat * 1.2);
     }
 
-    // 2. Hitung Total Power
     const powerScore = effectiveStat + extra + wpn + Math.floor(lvl / 2);
-
-    // 3. Database Monster (Start dari 14 = Stat 9 + Wpn 5)
     const MONSTER_DB = [
-      { name: "Rat (Lv.1)", min: 14 }, 
+      { name: "Rat (Lv.1)", min: 14 },
       { name: "Rat (Lv.3)", min: 22 },
       { name: "Crow (Lv.6)", min: 33 },
       { name: "Wolf (Lv.9)", min: 42 },
@@ -322,22 +395,18 @@ export default function Page() {
       { name: "Demon", min: 1400 }
     ];
 
-    // 4. Logic Pencarian Target
-    // KASUS KHUSUS: Kalau Power di bawah 14 (Belum kuat lawan Tikus Lv.1)
     if (powerScore < 14) {
         setCalcResult({
             score: Math.floor(powerScore),
-            target: "❌ Belum Kuat", // Vonis Jujur
+            target: "❌ Belum Kuat",
             next: "Rat (Lv.1)",
-            need: Math.ceil(14 - powerScore) // Kasih tau kurang berapa stat lagi
+            need: Math.ceil(14 - powerScore)
         });
         return;
     }
 
-    // KASUS NORMAL: Cari monster yang cocok
     let currentTarget = MONSTER_DB[0];
     let nextTarget = { name: "MAX LEVEL", min: powerScore };
-
     for (let i = 0; i < MONSTER_DB.length; i++) {
         if (powerScore >= MONSTER_DB[i].min) {
             currentTarget = MONSTER_DB[i];
@@ -354,11 +423,10 @@ export default function Page() {
         need: Math.max(0, Math.ceil(nextTarget.min - powerScore))
     });
   };
-
-
-  /* ===== UI HELPERS & CART ===== */
+      /* ===== UI HELPERS & CART ===== */
   const toggleTheme = () => {
-    const newMode = !darkMode; setDarkMode(newMode);
+    const newMode = !darkMode;
+    setDarkMode(newMode);
     localStorage.setItem("gearShopTheme", newMode ? "dark" : "light");
   };
   const formatGold = (val) => <span style={{ fontWeight: "bold", color: "#B8860B" }}>{val ? val.toLocaleString('id-ID') : 0} 🪙</span>;
@@ -377,20 +445,27 @@ export default function Page() {
     if (exist) { setCart(cart.map(c => c.key === key ? { ...c, qty: c.qty + 1 } : c));
     } else { setCart([...cart, { ...item, mode, qty: 1, key }]); }
     setCartOpen(true);
+    showToast("Masuk Keranjang! 🛒", "success");
   };
+
   const updateQty = (item, qty) => { if (qty < 1) return;
     setCart(cart.map(c => c.key === item.key ? { ...c, qty } : c)); };
   const removeFromCart = item => setCart(cart.filter(c => c.key !== item.key));
   
   const totalQty = cart.reduce((s, c) => s + c.qty, 0);
   const totalPrice = cart.reduce((s, c) => s + (c.mode === "buy" ? c.buy : c.sell) * c.qty, 0);
-  
+
+  // --- UPDATE: Validasi Checkout (Ganti Alert jadi Toast) ---
   const handleCheckoutClick = () => {
     if (!cart.length) return;
-    if (!ign) { alert("Mohon isi IGN (Nickname Game) dulu ya!"); return; }
-    setCartOpen(false); setConfirmOpen(true);
+    if (!ign) { 
+        showToast("Mohon isi IGN (Nickname Game) dulu ya!", "error"); 
+        return; 
+    }
+    setCartOpen(false); 
+    setConfirmOpen(true);
   };
-  
+
   const processToWA = () => {
     const itemText = cart.map(c => {
         const kategoriStr = c.kategori?.toLowerCase().includes("diamond") ? "" : ` [${c.kategori}]`;
@@ -402,7 +477,6 @@ export default function Page() {
   };
 
   const contactAdmin = () => window.open("https://wa.me/6283101456267?text=Halo%20Admin,%20mau%20tanya-tanya%20dong.", "_blank");
-  
   const contactOwner = (item, type) => {
     const targetWA = item.waOwner ? formatWaNumber(item.waOwner) : "6283101456267";
     const text = type === 'account' ? `Halo, saya minat akun titipan: *${item.nama}* (Owner: ${item.owner}).` : `Halo, saya minat barang titipan: *${item.nama}* (Owner: ${item.owner}).`;
@@ -422,7 +496,7 @@ export default function Page() {
   "#1e1e1e" : "#fff", border: darkMode ? "1px solid #333" : "1px solid #ddd", modalBg: darkMode ?
   "#222" : "#fff", accent: "#B8860B", inputBg: darkMode ? "#2c2c2c" : "#fff", subText: darkMode ? "#aaa" : "#666", auctionBg: darkMode ?
   "linear-gradient(135deg, #2c0000 0%, #4a0000 100%)" : "linear-gradient(135deg, #fff0f0 0%, #ffe0e0 100%)" };
-
+  
   const styles = {
       header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#1e293b", color: "#fff", borderBottom: theme.border, position: "sticky", top: 0, zIndex: 100 },
       cartIcon: { position: "relative", fontSize: 24, cursor: "pointer" },
@@ -438,11 +512,9 @@ export default function Page() {
       fab: { position: "fixed", bottom: 30, right: 30, background: "#25D366", color: "white", width: 56, height: 56, borderRadius: "50%", display: "flex", justifyContent: "center", alignItems: "center", fontSize: 30, boxShadow: "0 4px 10px rgba(0,0,0,0.3)", cursor: "pointer", zIndex: 201 },
       fabMenu: { position: "fixed", bottom: 95, right: 30, display: "flex", flexDirection: "column", gap: 10, zIndex: 201 }
   };
-      if (!loading && isMaintenance) { return (<div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#121212", color: "#ffffff", fontFamily: "sans-serif", textAlign: "center", padding: "20px" }}><h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "10px", letterSpacing: "2px" }}>⚙️GEARSHOP⚙️</h1><h2 style={{ color: "#f1c40f", fontSize: "1.5rem", marginBottom: "20px", border: "2px solid #f1c40f", padding: "10px 20px", borderRadius: "8px", background: "rgba(241, 196, 15, 0.1)" }}>🚧 MAINTENANCE 🚧</h2><p style={{ fontSize: "1.1rem", marginBottom: "5px" }}>Silahkan cek dalam beberapa waktu lagi.</p><p style={{ fontSize: "1.1rem", fontWeight: "bold", marginTop: "20px" }}>Terimakasih 😁</p></div>);
-  }
+            if (!loading && isMaintenance) { return (<div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#121212", color: "#ffffff", fontFamily: "sans-serif", textAlign: "center", padding: "20px" }}><h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "10px", letterSpacing: "2px" }}>⚙️GEARSHOP⚙️</h1><h2 style={{ color: "#f1c40f", fontSize: "1.5rem", marginBottom: "20px", border: "2px solid #f1c40f", padding: "10px 20px", borderRadius: "8px", background: "rgba(241, 196, 15, 0.1)" }}>🚧 MAINTENANCE 🚧</h2><p style={{ fontSize: "1.1rem", marginBottom: "5px" }}>Silahkan cek dalam beberapa waktu lagi.</p><p style={{ fontSize: "1.1rem", fontWeight: "bold", marginTop: "20px" }}>Terimakasih 😁</p></div>); }
   
-  if (!loading && !isStoreOpen) { return (<div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20, textAlign: "center" }}><img src="/logo.png" height={60} alt="Logo" style={{marginBottom: 20}} /><h2 style={{color: "#FF4444", fontSize: 28, marginBottom: 10}}>🔴 TOKO TUTUP</h2><p style={{color: theme.subText, maxWidth: 300, marginBottom: 30}}>Maaf ya, admin lagi ❄️Natalan❄️. Cek lagi nanti ya!</p><button onClick={contactAdmin} style={{ background: "#25D366", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 50, fontSize: 16, fontWeight: "bold", cursor: "pointer" }}><span>💬 Chat WhatsApp Admin</span></button></div>);
-  }
+  if (!loading && !isStoreOpen) { return (<div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20, textAlign: "center" }}><img src="/logo.png" height={60} alt="Logo" style={{marginBottom: 20}} /><h2 style={{color: "#FF4444", fontSize: 28, marginBottom: 10}}>🔴 TOKO TUTUP</h2><p style={{color: theme.subText, maxWidth: 300, marginBottom: 30}}>Maaf ya, admin lagi istirahat. Cek lagi nanti ya!</p><button onClick={contactAdmin} style={{ background: "#25D366", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 50, fontSize: 16, fontWeight: "bold", cursor: "pointer" }}><span>💬 Chat WhatsApp Admin</span></button></div>); }
 
   return (
     <div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, fontFamily: "sans-serif", paddingBottom: 80 }}>
@@ -452,10 +524,7 @@ export default function Page() {
               <img src="/logo.png" height={36} alt="Logo" />
           </div>
           <div style={{display:"flex", alignItems:"center", gap: 15}}>
-              {/* === TOMBOL CALCULATOR BARU (Posisi Kiri Market) === */}
               <div style={{cursor:"pointer", fontSize: 22}} onClick={() => setCalcOpen(true)}>🧮</div>
-              
-              {/* Tombol Market, Theme, Cart Lama */}
               <div style={{cursor:"pointer", fontSize: 22}} onClick={() => setMarketOpen(true)}>🏪</div>
               <div style={{cursor:"pointer", fontSize: 20}} onClick={toggleTheme}>{darkMode ? "☀️" : "🌙"}</div>
               <div style={styles.cartIcon} onClick={() => setCartOpen(true)}>
@@ -522,8 +591,8 @@ export default function Page() {
             <h3 style={{ marginLeft: 8, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>🔥 Hot Items</h3>
             <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 10, paddingLeft: 8 }}>
             {heroItems.map((item, idx) => { 
-                const status = item.status?.toLowerCase(); 
-                const canBuy = (status === 'ready' || status === 'full') && item.buy > 0; 
+                const status = item.status?.toLowerCase();
+                const canBuy = (status === 'ready' || status === 'full') && item.buy > 0;
                 return (
                 <div key={idx} style={{ minWidth: 140, background: theme.cardBg, border: theme.border, borderRadius: 8, padding: 10, display: "flex", flexDirection: "column", gap: 5 }}>
                     <div style={{fontWeight: "bold", fontSize: 14, color: "#FFD700", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"}}>{item.nama}</div>
@@ -570,7 +639,8 @@ export default function Page() {
           )})}
         </div>
       </main>
-              {/* === CALCULATOR MODAL (FITUR BARU) === */}
+
+      {/* === CALCULATOR MODAL === */}
       {calcOpen && (
         <div style={styles.modalOverlay}>
             <div style={{...styles.modalContent, background: "#1a1a1a", borderTop: "2px solid #FFD700"}}>
@@ -580,87 +650,15 @@ export default function Page() {
                     </h2>
                     <button onClick={()=>setCalcOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button>
                 </div>
-
-                {/* INPUT SECTION */}
+                {/* Isi Calculator sama seperti sebelumnya... */}
                 <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10}}>
-                    <div>
-                        <label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Base Level</label>
-                        <input type="number" placeholder="ex: 300" value={calcInput.lvl} onChange={e => setCalcInput({...calcInput, lvl: e.target.value})} style={styles.input} />
-                    </div>
-                    <div>
-                        <label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Main Stat</label>
-                        <input type="number" placeholder="ex: 320" value={calcInput.stat} onChange={e => setCalcInput({...calcInput, stat: e.target.value})} style={styles.input} />
-                    </div>
+                    <div><label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Base Level</label><input type="number" placeholder="ex: 300" value={calcInput.lvl} onChange={e => setCalcInput({...calcInput, lvl: e.target.value})} style={styles.input} /></div>
+                    <div><label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Main Stat</label><input type="number" placeholder="ex: 320" value={calcInput.stat} onChange={e => setCalcInput({...calcInput, stat: e.target.value})} style={styles.input} /></div>
                 </div>
-
-                <div style={{marginBottom: 10}}>
-                    <label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Extra Stat (Ring/Neck)</label>
-                    <input type="number" placeholder="ex: 10 (Kosongkan jika 0)" value={calcInput.extra} onChange={e => setCalcInput({...calcInput, extra: e.target.value})} style={styles.input} />
-                </div>
-
-                <div style={{marginBottom: 15}}>
-                    <label style={{fontSize: 11, color: "#aaa", marginBottom: 6, display:"block"}}>Weapon Attack</label>
-                    <div style={{display: "flex", gap: 8, overflowX: "auto", paddingBottom: 5}}>
-                        {[4, 5, 7, 9, 11, 15].map(atk => (
-                            <button key={atk} onClick={() => setCalcInput({...calcInput, wpn: atk})} 
-                            style={{
-                                flex: 1, minWidth: 40, padding: "8px 0", borderRadius: 6, fontWeight: "bold",
-                                background: calcInput.wpn === atk ? "#FFD700" : "#333",
-                                color: calcInput.wpn === atk ? "#000" : "#888",
-                                border: "none"
-                            }}>
-                                {atk}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div style={{marginBottom: 20, background: "rgba(255,255,255,0.05)", padding: 10, borderRadius: 8}}>
-                    <label style={{fontSize: 11, color: "#aaa", marginBottom: 8, display:"block"}}>Training Mode</label>
-                    <div style={{display: "flex", gap: 10, marginBottom: 10}}>
-                         <button onClick={() => setCalcInput({...calcInput, mode: 'afk'})} style={{flex: 1, padding: 8, borderRadius: 6, border: calcInput.mode === 'afk' ? "1px solid #FFD700" : "1px solid #444", background: calcInput.mode === 'afk' ? "rgba(255, 215, 0, 0.1)" : "transparent", color: calcInput.mode === 'afk' ? "#FFD700" : "#888"}}>
-                            💤 AFK (x1)
-                         </button>
-                         <button onClick={() => setCalcInput({...calcInput, mode: 'ptrain'})} style={{flex: 1, padding: 8, borderRadius: 6, border: calcInput.mode === 'ptrain' ? "1px solid #FF4444" : "1px solid #444", background: calcInput.mode === 'ptrain' ? "rgba(255, 68, 68, 0.1)" : "transparent", color: calcInput.mode === 'ptrain' ? "#FF4444" : "#888"}}>
-                            🔥 Ptrain (x4)
-                         </button>
-                    </div>
-                    {calcInput.mode === 'ptrain' && (
-                        <div style={{display:"flex", alignItems:"center", gap: 8, fontSize: 13, color: theme.text}}>
-                            <input type="checkbox" checked={calcInput.magic} onChange={e => setCalcInput({...calcInput, magic: e.target.checked})} style={{width: 16, height: 16}} />
-                            <span>Saya menggunakan Magic (Mage) 🧙‍♂️</span>
-                        </div>
-                    )}
-                </div>
-
-              
-
-                {/* RESULT SECTION */}
-                {calcResult && (
-                    <div style={{marginTop: 20, padding: 15, borderRadius: 12, background: "linear-gradient(135deg, #222 0%, #111 100%)", border: "1px solid #444", position: "relative", overflow: "hidden"}}>
-                         <div style={{position: "absolute", top: -10, right: -10, fontSize: 80, opacity: 0.1}}>🎯</div>
-                         
-                         <div style={{textAlign: "center", marginBottom: 15}}>
-                            <div style={{fontSize: 12, color: "#888"}}>Rekomendasi Monster</div>
-                            <div style={{fontSize: 28, fontWeight: "900", color: "#FFD700", textShadow: "0 0 10px rgba(255, 215, 0, 0.3)"}}>
-                                {calcResult.target.toUpperCase()}
-                            </div>
-                            <div style={{fontSize: 11, color: "#4caf50"}}>Power Score: {calcResult.score}</div>
-                         </div>
-
-                         <div style={{display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.05)", padding: 10, borderRadius: 8}}>
-                             <div style={{fontSize: 24}}>🔜</div>
-                             <div style={{flex: 1}}>
-                                 <div style={{fontSize: 10, color: "#aaa"}}>Next Target:</div>
-                                 <div style={{fontSize: 14, fontWeight: "bold", color: "#fff"}}>{calcResult.next}</div>
-                             </div>
-                             <div style={{textAlign: "right"}}>
-                                 <div style={{fontSize: 10, color: "#aaa"}}>Butuh Stat:</div>
-                                 <div style={{fontSize: 16, fontWeight: "bold", color: "#FF4444"}}>+{calcResult.need}</div>
-                             </div>
-                         </div>
-                    </div>
-                )}
+                <div style={{marginBottom: 10}}><label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Extra Stat (Ring/Neck)</label><input type="number" placeholder="ex: 10 (Kosongkan jika 0)" value={calcInput.extra} onChange={e => setCalcInput({...calcInput, extra: e.target.value})} style={styles.input} /></div>
+                <div style={{marginBottom: 15}}><label style={{fontSize: 11, color: "#aaa", marginBottom: 6, display:"block"}}>Weapon Attack</label><div style={{display: "flex", gap: 8, overflowX: "auto", paddingBottom: 5}}>{[4, 5, 7, 9, 11, 15].map(atk => (<button key={atk} onClick={() => setCalcInput({...calcInput, wpn: atk})} style={{ flex: 1, minWidth: 40, padding: "8px 0", borderRadius: 6, fontWeight: "bold", background: calcInput.wpn === atk ? "#FFD700" : "#333", color: calcInput.wpn === atk ? "#000" : "#888", border: "none" }}>{atk}</button>))}</div></div>
+                <div style={{marginBottom: 20, background: "rgba(255,255,255,0.05)", padding: 10, borderRadius: 8}}><label style={{fontSize: 11, color: "#aaa", marginBottom: 8, display:"block"}}>Training Mode</label><div style={{display: "flex", gap: 10, marginBottom: 10}}><button onClick={() => setCalcInput({...calcInput, mode: 'afk'})} style={{flex: 1, padding: 8, borderRadius: 6, border: calcInput.mode === 'afk' ? "1px solid #FFD700" : "1px solid #444", background: calcInput.mode === 'afk' ? "rgba(255, 215, 0, 0.1)" : "transparent", color: calcInput.mode === 'afk' ? "#FFD700" : "#888"}}>💤 AFK (x1)</button><button onClick={() => setCalcInput({...calcInput, mode: 'ptrain'})} style={{flex: 1, padding: 8, borderRadius: 6, border: calcInput.mode === 'ptrain' ? "1px solid #FF4444" : "1px solid #444", background: calcInput.mode === 'ptrain' ? "rgba(255, 68, 68, 0.1)" : "transparent", color: calcInput.mode === 'ptrain' ? "#FF4444" : "#888"}}>🔥 Ptrain (x4)</button></div>{calcInput.mode === 'ptrain' && (<div style={{display:"flex", alignItems:"center", gap: 8, fontSize: 13, color: theme.text}}><input type="checkbox" checked={calcInput.magic} onChange={e => setCalcInput({...calcInput, magic: e.target.checked})} style={{width: 16, height: 16}} /><span>Saya menggunakan Magic (Mage) 🧙‍♂️</span></div>)}</div>
+                {calcResult && (<div style={{marginTop: 20, padding: 15, borderRadius: 12, background: "linear-gradient(135deg, #222 0%, #111 100%)", border: "1px solid #444", position: "relative", overflow: "hidden"}}><div style={{position: "absolute", top: -10, right: -10, fontSize: 80, opacity: 0.1}}>🎯</div><div style={{textAlign: "center", marginBottom: 15}}><div style={{fontSize: 12, color: "#888"}}>Rekomendasi Monster</div><div style={{fontSize: 28, fontWeight: "900", color: "#FFD700", textShadow: "0 0 10px rgba(255, 215, 0, 0.3)"}}>{calcResult.target.toUpperCase()}</div><div style={{fontSize: 11, color: "#4caf50"}}>Power Score: {calcResult.score}</div></div><div style={{display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.05)", padding: 10, borderRadius: 8}}><div style={{fontSize: 24}}>🔜</div><div style={{flex: 1}}><div style={{fontSize: 10, color: "#aaa"}}>Next Target:</div><div style={{fontSize: 14, fontWeight: "bold", color: "#fff"}}>{calcResult.next}</div></div><div style={{textAlign: "right"}}><div style={{fontSize: 10, color: "#aaa"}}>Butuh Stat:</div><div style={{fontSize: 16, fontWeight: "bold", color: "#FF4444"}}>+{calcResult.need}</div></div></div></div>)}
             </div>
         </div>
       )}
@@ -698,14 +696,43 @@ export default function Page() {
            </div>
         </div>
       )}
-
-     {/* CONFIRMATION MODAL */}
+       {/* CONFIRMATION MODAL (MODAL LAMA BUAT CHECKOUT) */}
       {confirmOpen && (
           <div onClick={(e) => { if (e.target === e.currentTarget) setConfirmOpen(false); }} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-              <div style={{ background: theme.cardBg, width: "100%", maxWidth: 400, borderRadius: 12, padding: 20, border: "1px solid #555" }}><h2 style={{marginTop: 0, textAlign: "center"}}>📝 Konfirmasi Order</h2><div style={{background: "rgba(255,255,255,0.05)", padding: 10, borderRadius: 8, margin: "15px 0", maxHeight: 200, overflowY: "auto"}}>{cart.map((c, i) => (<div key={i} style={{fontSize: 14, marginBottom: 5, borderBottom: "1px dashed #444", paddingBottom: 5}}>{c.nama} <span style={{fontSize:10}}>({c.mode})</span> <div style={{float: "right"}}>x{c.qty}</div></div>))}</div><div style={{display:"flex", justifyContent:"space-between", fontSize: 18, fontWeight:"bold", marginBottom: 20, borderTop: "1px solid #555", paddingTop: 10}}><span>Total Bayar:</span><span style={{color: "#FFD700"}}>{totalPrice.toLocaleString('id-ID')} 🪙</span></div><div style={{display: "flex", gap: 10}}><button onClick={() => setConfirmOpen(false)} style={{flex: 1, padding: 12, background: "transparent", border: "1px solid #555", color: theme.text, borderRadius: 8, cursor: "pointer"}}>Batal</button><button onClick={processToWA} style={{flex: 1, padding: 12, background: "#25D366", border: "none", color: "white", borderRadius: 8, fontWeight: "bold", cursor: "pointer"}}>Lanjut WA ➤</button></div></div>
+              <div style={{ background: theme.cardBg, width: "100%", maxWidth: 400, borderRadius: 12, padding: 20, border: "1px solid #555" }}><h2 style={{marginTop: 0, textAlign: "center"}}>📝 Konfirmasi Order</h2><div style={{background: "rgba(255,255,255,0.05)\", padding: 10, borderRadius: 8, margin: "15px 0", maxHeight: 200, overflowY: "auto"}}>{cart.map((c, i) => (<div key={i} style={{fontSize: 14, marginBottom: 5, borderBottom: "1px dashed #444", paddingBottom: 5}}>{c.nama} <span style={{fontSize:10}}>({c.mode})</span> <div style={{float: "right"}}>x{c.qty}</div></div>))}</div><div style={{display:"flex", justifyContent:"space-between", fontSize: 18, fontWeight:"bold", marginBottom: 20, borderTop: "1px solid #555", paddingTop: 10}}><span>Total Bayar:</span><span style={{color: "#FFD700"}}>{totalPrice.toLocaleString('id-ID')} 🪙</span></div><div style={{display: "flex", gap: 10}}><button onClick={() => setConfirmOpen(false)} style={{flex: 1, padding: 12, background: "transparent", border: "1px solid #555", color: theme.text, borderRadius: 8, cursor: "pointer"}}>Batal</button><button onClick={processToWA} style={{flex: 1, padding: 12, background: "#25D366", border: "none", color: "white", borderRadius: 8, fontWeight: "bold", cursor: "pointer"}}>Lanjut WA ➤</button></div></div>
           </div>
       )}
+
+      {/* === [NEW] KOMPONEN TOAST & CUSTOM MODAL === */}
+      
+      {/* Toast Notification */}
+      {toast.show && (
+        <div style={{ position: "fixed", bottom: 30, left: "50%", transform: "translateX(-50%)", background: toast.type === "error" ? "#FF4444" : "#25D366", color: "#fff", padding: "12px 24px", borderRadius: 50, boxShadow: "0 4px 15px rgba(0,0,0,0.3)", zIndex: 1000, fontWeight: "bold", display: "flex", alignItems: "center", gap: 10, animation: "fadeInUp 0.3s ease-out", whiteSpace: "nowrap" }}>
+          <span>{toast.type === "error" ? "⚠️" : "✅"}</span>
+          {toast.msg}
+        </div>
+      )}
+
+      {/* Custom Modal Dialog (Pengganti Confirm) */}
+      {modalConfig.show && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: theme.cardBg, border: "2px solid #FFD700", width: "100%", maxWidth: 350, borderRadius: 12, padding: 25, textAlign: "center", boxShadow: "0 0 30px rgba(255, 215, 0, 0.2)", animation: "scaleIn 0.2s ease-out" }}>
+            <h2 style={{color: "#FFD700", marginTop: 0}}>{modalConfig.title}</h2>
+            <p style={{color: theme.text, fontSize: 15, lineHeight: 1.5}}>{modalConfig.message}</p>
+            <div style={{display: "flex", gap: 10, marginTop: 25}}>
+              {modalConfig.cancelText && (
+                <button onClick={() => setModalConfig({...modalConfig, show: false})} style={{flex: 1, padding: 12, borderRadius: 8, border: "1px solid #555", background: "transparent", color: theme.text, cursor: "pointer"}}>
+                  {modalConfig.cancelText}
+                </button>
+              )}
+              <button onClick={() => { if (modalConfig.onConfirm) modalConfig.onConfirm(); setModalConfig({...modalConfig, show: false}); }} style={{flex: 1, padding: 12, borderRadius: 8, border: "none", background: "#FFD700", color: "#000", fontWeight: "bold", cursor: "pointer"}}>
+                {modalConfig.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
-                  }
-                
+}
