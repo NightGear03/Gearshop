@@ -666,13 +666,90 @@ export default function Page() {
       )}
 
       {/* === PASAR WARGA MODAL === */}
-      {marketOpen && (
-          <div style={styles.modalOverlay}><div style={styles.modalContent}><div style={{display:"flex", justifyContent:"space-between", marginBottom: 20}}><h2 style={{margin:0}}>🏪 Pasar Warga (v2.0)</h2><button onClick={()=>setMarketOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button></div><div style={styles.tabContainer}><button style={styles.tabBtn(marketTab === 'items')} onClick={()=>setMarketTab('items')}>⚔️ ITEM</button><button style={styles.tabBtn(marketTab === 'accounts')} onClick={()=>setMarketTab('accounts')}>👤 AKUN</button></div>
-              <div style={marketTab === 'items' ? styles.grid : {...styles.grid, gridTemplateColumns: "1fr"}}>{marketTab === 'items' && titipanItems.map((item, idx) => (<div key={idx} style={{...styles.card, opacity: item.status?.toLowerCase() === 'sold' ? 0.6 : 1}}>{item.status?.toLowerCase() === 'sold' && <div style={{position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", color:"red", fontWeight:"bold", fontSize:20, zIndex:2}}>SOLD</div>}<div style={{height: 100, background: "#333", borderRadius: 4, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden"}}>{item.img ? <img src={item.img} alt={item.nama} style={{width:"100%", height:"100%", objectFit:"cover"}}/> : <span style={{fontSize:40}}>📦</span>}</div><div style={{fontWeight:"bold", color: "#FFD700", fontSize: 14}}>{item.nama}</div><div style={{fontSize: 12, color: theme.text}}>By: {item.owner}</div><div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 4}}><span style={{color: "#4caf50", fontWeight:"bold"}}>{item.harga}</span><span style={{fontSize: 10, padding: "2px 6px", borderRadius: 4, background: item.tipeHarga === 'Nego' ? '#FFA500' : '#2196F3', color:'white'}}>{item.tipeHarga}</span></div><button onClick={()=>contactOwner(item, 'item')} style={{...styles.btn, marginTop:8, fontSize: 12}}>💬 Chat Owner</button></div>))}
-                  {marketTab === 'accounts' && titipanAccounts.map((acc, idx) => (<div key={idx} style={{...styles.card, flexDirection: "row", gap: 12, alignItems: "center"}}><div style={{width: 80, height: 80, background: "#333", borderRadius: "50%", overflow:"hidden", flexShrink: 0}}>{acc.img ? <img src={acc.img} alt={acc.nama} style={{width:"100%", height:"100%", objectFit:"cover"}}/> : <div style={{width:"100%",height:"100%", display:"flex",alignItems:"center",justifyContent:"center", fontSize:30}}>👤</div>}</div><div style={{flex: 1}}><div style={{display:"flex", justifyContent:"space-between"}}><div style={{fontWeight:"bold", fontSize: 16, color: "#FFD700"}}>{acc.nama} <span style={{fontSize:12, color:"#aaa"}}>Lv.{acc.level}</span></div>{acc.wajibMM?.toLowerCase() === 'ya' && <div style={{fontSize: 10, background: "red", color:"white", padding: "2px 6px", borderRadius: 4}}>🛡️ WAJIB MM</div>}</div><div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap: 4, fontSize: 11, margin: "8px 0", color: "#ccc", background:"rgba(255,255,255,0.05)", padding: 6, borderRadius: 4}}><div>⚔️ {acc.melee} | 🏹 {acc.dist}</div><div>✨ {acc.magic} | 🛡️ {acc.def}</div></div><div style={{fontSize: 11, marginBottom: 4, color: "#aaa"}}>Set: {acc.setInfo}</div><div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 4}}><div><div style={{fontSize:10, color:"#aaa"}}>Owner: {acc.owner}</div><div style={{color: "#4caf50", fontWeight:"bold", fontSize: 14}}>{acc.harga}</div></div><button onClick={()=>contactOwner(acc, 'account')} style={{...styles.btn, fontSize: 12, background: "#333", border: "1px solid #555"}}>{acc.tipeHarga?.toLowerCase() === 'fix' ? '💬 Beli (Fix)' : '💬 Nego'}</button></div></div></div>))}
-                  {((marketTab === 'items' && titipanItems.length === 0) || (marketTab === 'accounts' && titipanAccounts.length === 0)) && (<div style={{textAlign: "center", color: theme.subText, marginTop: 40, width: "100%", gridColumn: "1 / -1"}}><div style={{fontSize: 40}}>🕵️</div><p>Belum ada data saat ini.</p></div>)}
-              </div><div style={styles.fab} onClick={() => setTitipMenuOpen(!titipMenuOpen)}>{titipMenuOpen ? "✕" : "+"}</div>{titipMenuOpen && (<div style={styles.fabMenu}><button onClick={()=>titipJualWA('account')} style={{padding: "10px 20px", borderRadius: 20, border:"none", background: "#fff", color:"#333", fontWeight:"bold", boxShadow:"0 4px 10px rgba(0,0,0,0.3)", display:"flex", alignItems:"center", gap: 8}}>👤 Titip Akun</button><button onClick={()=>titipJualWA('item')} style={{padding: "10px 20px", borderRadius: 20, border:"none", background: "#fff", color:"#333", fontWeight:"bold", boxShadow:"0 4px 10px rgba(0,0,0,0.3)", display:"flex", alignItems:"center", gap: 8}}>⚔️ Titip Item</button></div>)}</div></div>
-      )}
+{marketOpen && (
+    <div style={styles.modalOverlay}>
+        <div style={styles.modalContent}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
+                <h2 style={{ margin: 0 }}>🏪 Pasar Warga (v2.0)</h2>
+                <button onClick={() => setMarketOpen(false)} style={{ background: "transparent", border: "none", color: theme.text, fontSize: 24 }}>✕</button>
+            </div>
+            <div style={styles.tabContainer}>
+                <button style={styles.tabBtn(marketTab === 'items')} onClick={() => setMarketTab('items')}>⚔️ ITEM</button>
+                <button style={styles.tabBtn(marketTab === 'accounts')} onClick={() => setMarketTab('accounts')}>👤 AKUN</button>
+            </div>
+            
+            <div style={marketTab === 'items' ? styles.grid : { ...styles.grid, gridTemplateColumns: "1fr" }}>
+                
+                {/* === BAGIAN ITEM === */}
+                {marketTab === 'items' && titipanItems.map((item, idx) => (
+                    <div key={idx} style={{ ...styles.card, position: "relative", opacity: item.status?.toLowerCase() === 'sold' ? 0.6 : 1 }}>
+                        {/* Overlay SOLD Item */}
+                        {item.status?.toLowerCase() === 'sold' && (
+                            <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", color: "red", fontWeight: "bold", fontSize: 20, zIndex: 2, borderRadius: 8 }}>SOLD</div>
+                        )}
+                        <div style={{ height: 100, background: "#333", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                            {item.img ? <img src={item.img} alt={item.nama} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 40 }}>📦</span>}
+                        </div>
+                        <div style={{ fontWeight: "bold", color: "#FFD700", fontSize: 14 }}>{item.nama}</div>
+                        <div style={{ fontSize: 12, color: theme.text }}>By: {item.owner}</div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+                            <span style={{ color: "#4caf50", fontWeight: "bold" }}>{item.harga}</span>
+                            <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: item.tipeHarga === 'Nego' ? '#FFA500' : '#2196F3', color: 'white' }}>{item.tipeHarga}</span>
+                        </div>
+                        <button onClick={() => contactOwner(item, 'item')} style={{ ...styles.btn, marginTop: 8, fontSize: 12 }}>💬 Chat Owner</button>
+                    </div>
+                ))}
+
+                {/* === BAGIAN AKUN (SUDAH DIPERBAIKI) === */}
+                {marketTab === 'accounts' && titipanAccounts.map((acc, idx) => (
+                    <div key={idx} style={{ ...styles.card, flexDirection: "row", gap: 12, alignItems: "center", position: "relative", opacity: acc.status?.toLowerCase() === 'sold' ? 0.6 : 1 }}>
+                        {/* Overlay SOLD Akun */}
+                        {acc.status?.toLowerCase() === 'sold' && (
+                            <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", color: "red", fontWeight: "bold", fontSize: 20, zIndex: 2, borderRadius: 8 }}>SOLD</div>
+                        )}
+                        <div style={{ width: 80, height: 80, background: "#333", borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}>
+                            {acc.img ? <img src={acc.img} alt={acc.nama} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }}>👤</div>}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                <div style={{ fontWeight: "bold", fontSize: 16, color: "#FFD700" }}>{acc.nama} <span style={{ fontSize: 12, color: "#aaa" }}>Lv.{acc.level}</span></div>
+                                {acc.wajibMM?.toLowerCase() === 'ya' && <div style={{ fontSize: 10, background: "red", color: "white", padding: "2px 6px", borderRadius: 4 }}>🛡️ WAJIB MM</div>}
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, fontSize: 11, margin: "8px 0", color: "#ccc", background: "rgba(255,255,255,0.05)", padding: 6, borderRadius: 4 }}>
+                                <div>⚔️ {acc.melee} | 🏹 {acc.dist}</div>
+                                <div>✨ {acc.magic} | 🛡️ {acc.def}</div>
+                            </div>
+                            <div style={{ fontSize: 11, marginBottom: 4, color: "#aaa" }}>Set: {acc.setInfo}</div>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+                                <div>
+                                    <div style={{ fontSize: 10, color: "#aaa" }}>Owner: {acc.owner}</div>
+                                    <div style={{ color: "#4caf50", fontWeight: "bold", fontSize: 14 }}>{acc.harga}</div>
+                                </div>
+                                <button onClick={() => contactOwner(acc, 'account')} style={{ ...styles.btn, fontSize: 12, background: "#333", border: "1px solid #555" }}>{acc.tipeHarga?.toLowerCase() === 'fix' ? '💬 Beli (Fix)' : '💬 Nego'}</button>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+
+                {((marketTab === 'items' && titipanItems.length === 0) || (marketTab === 'accounts' && titipanAccounts.length === 0)) && (
+                    <div style={{ textAlign: "center", color: theme.subText, marginTop: 40, width: "100%", gridColumn: "1 / -1" }}>
+                        <div style={{ fontSize: 40 }}>🕵️</div>
+                        <p>Belum ada data saat ini.</p>
+                    </div>
+                )}
+            </div>
+
+            <div style={styles.fab} onClick={() => setTitipMenuOpen(!titipMenuOpen)}>{titipMenuOpen ? "✕" : "+"}</div>
+            {titipMenuOpen && (
+                <div style={styles.fabMenu}>
+                    <button onClick={() => titipJualWA('account')} style={{ padding: "10px 20px", borderRadius: 20, border: "none", background: "#fff", color: "#333", fontWeight: "bold", boxShadow: "0 4px 10px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", gap: 8 }}>👤 Titip Akun</button>
+                    <button onClick={() => titipJualWA('item')} style={{ padding: "10px 20px", borderRadius: 20, border: "none", background: "#fff", color: "#333", fontWeight: "bold", boxShadow: "0 4px 10px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", gap: 8 }}>⚔️ Titip Item</button>
+                </div>
+            )}
+        </div>
+    </div>
+)}
+
 
       {/* === MODAL VERIFIKASI BIN === */}
       {isBinModalOpen && (
