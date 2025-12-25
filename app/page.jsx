@@ -749,8 +749,7 @@ export default function Page() {
             )}
         </div>
         )}
-          /* PART 6 of 7: Store Content & Calculator Modal */
-
+          
         {/* HERO ITEM (HOT ITEMS) */}
         {heroItems.length > 0 && (
         <div style={{ marginBottom: 20 }}>
@@ -894,8 +893,7 @@ export default function Page() {
             </div>
         </div>
       )}
-                    /* PART 7A: Pasar Warga & Gold Market UI */
-
+                    
       {/* === PASAR WARGA MODAL (TITIPAN) === */}
       {marketOpen && (
           <div style={styles.modalOverlay}>
@@ -1089,8 +1087,7 @@ export default function Page() {
             </div>
         </div>
       )}
-        /* PART 7B: All Modals, Toast & Closing */
-
+        
       {/* === CUSTOM MODAL: LIST MM (GOLD MARKET) === */}
       {isMMListOpen && (
         <div style={styles.modalOverlay}>
