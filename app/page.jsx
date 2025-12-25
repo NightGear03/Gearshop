@@ -1147,7 +1147,7 @@ export default function Page() {
                 <p style={{fontSize:12, color:"#aaa"}}>Masukkan 4 digit kode token iklan Anda untuk menghapus.</p>
                 <input 
                     type="number" 
-                    placeholder="Kode Token (4 Digit)" 
+                    placeholder="Kode Token" 
                     value={deleteModal.tokenInput}
                     onChange={(e)=>setDeleteModal({...deleteModal, tokenInput: e.target.value})}
                     style={{...styles.input, textAlign:"center", fontSize:24, letterSpacing:8, margin:"15px 0"}}
