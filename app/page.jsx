@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 
 // === CONFIG URL (NEW UPDATED) ===
-const AUCTION_API = "https://script.google.com/macros/s/AKfycby6jpE2HK1O_TNXH_eHryEGyvD19FNlAu85EUGAr8wGtOlrHugEaYErW8DTaXnSisBH/exec";
+const AUCTION_API = "https://script.google.com/macros/s/AKfycbxXZcwinaTBQO9YZICIzTa6CuhosvD5QkuVie_yz5MAch8D3XOagMg5G65zYBzw0-Pi/exec";
 
 const STORE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1LFLYLmzl-YbYaYoFpEInQKGGzA9nuGzDA_0w9ulArJs/export?format=csv";
 const TITIPAN_ITEMS_URL = "https://docs.google.com/spreadsheets/d/1cUZWSumhePJLLocTMRE0-Q4BMC5bKgCyftOkVqC5BI0/export?format=csv";
