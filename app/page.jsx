@@ -262,9 +262,9 @@ export default function Page() {
         } else if (result.status === "SUCCESS") {
              setBidAmount(""); setBinCode(""); setIsBinModalOpen(false);
              setTimeout(fetchAuction, 1500); 
-             alert(result.message);
+             showToast(result.message);
         } else {
-             alert(result.message);
+             showToast(result.message);
         }
     } catch (error) { alert("Koneksi Error");
     } finally { setBidLoading(false); }
