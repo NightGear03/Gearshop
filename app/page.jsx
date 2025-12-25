@@ -1,13 +1,13 @@
-/* PART 1 of 7: Imports, Config & State */
+/* PART 1 of 7: Imports, Config, & State Definitions */
 "use client";
 
 import { useEffect, useState } from "react";
 
-// === CONFIG URL ===
-const AUCTION_API = "https://script.google.com/macros/s/AKfycbwmNQKVNEhq8iLg00GBCq9WSYEMWqBse5Lzo9zdc0sSDqCBn_eS8jp8XFdDs30tw2sr/exec";
-const STORE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1LFLYLmzl-YbYaYoFpEInQKGGzA9nuGzDA_0w9ulArJs/export?format=csv";
+// === CONFIG URL (UPDATED) ===
+// URL Script Baru sesuai request user
+const AUCTION_API = "https://script.google.com/macros/s/AKfycbw9O7C7AWRmhqS50eppvELu8GoX2eYNkTF9y4jY2FjQKQ5zyOK0Vxg8mGTyt8bhL9hj/exec";
 
-// URL TITIPAN
+const STORE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1LFLYLmzl-YbYaYoFpEInQKGGzA9nuGzDA_0w9ulArJs/export?format=csv";
 const TITIPAN_ITEMS_URL = "https://docs.google.com/spreadsheets/d/1cUZWSumhePJLLocTMRE0-Q4BMC5bKgCyftOkVqC5BI0/export?format=csv";
 const TITIPAN_ACCOUNTS_URL = "https://docs.google.com/spreadsheets/d/1sPZKHBNEooKSsD26usUfvOXX324lIghyHYd4R-gPDgY/export?format=csv";
 
@@ -27,17 +27,27 @@ export default function Page() {
   const [titipanAccounts, setTitipanAccounts] = useState([]);
   const [titipMenuOpen, setTitipMenuOpen] = useState(false);
 
-  /* ===== STATE CALCULATOR (FITUR BARU) ===== */
+  /* ===== STATE CALCULATOR ===== */
   const [calcOpen, setCalcOpen] = useState(false);
   const [calcInput, setCalcInput] = useState({
-    lvl: "",
-    stat: "",
-    extra: "",
-    wpn: 5,
-    mode: "afk", // 'afk' or 'ptrain'
-    magic: false
+    lvl: "", stat: "", extra: "", wpn: 5, mode: "afk", magic: false
   });
   const [calcResult, setCalcResult] = useState(null);
+
+  /* ===== STATE GOLD MARKET (NEW FEATURE) ===== */
+  // State baru untuk fitur Jual Beli Gold P2P
+  const [isGoldOpen, setIsGoldOpen] = useState(false);
+  const [goldData, setGoldData] = useState([]); // Nampung data dari Sheet
+  const [goldView, setGoldView] = useState("list"); // 'list' atau 'form'
+  const [goldLoading, setGoldLoading] = useState(false);
+  const [goldForm, setGoldForm] = useState({
+      tipe: "JUAL", // Default Jual
+      nama: "",
+      jumlah: "",
+      harga: "",
+      payment: "",
+      mm: "Perlu MM" // Default
+  });
 
   /* ===== STATE CART & USER & CONFIRMATION ===== */
   const [cart, setCart] = useState([]);
@@ -52,39 +62,40 @@ export default function Page() {
   const [bidLoading, setBidLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState("Loading...");
   const [isAuctionExpanded, setIsAuctionExpanded] = useState(false);
-
-  // === STATE BUAT BIN MODAL ===
+  
+  // Modal BIN & Confirm Bid
   const [isBinModalOpen, setIsBinModalOpen] = useState(false);
   const [binCode, setBinCode] = useState("");
-    // === STATE BARU: KONFIRMASI BID MODERN ===
   const [bidConfirm, setBidConfirm] = useState(null);
-  
 
-  /* ===== STATE DARK MODE & STORE STATUS ===== */
+  /* ===== STATE DARK MODE & UI ===== */
   const [darkMode, setDarkMode] = useState(true);
   const [isStoreOpen, setIsStoreOpen] = useState(true);
   const [isMaintenance, setIsMaintenance] = useState(false);
-
-  // === STATE BARU: TOAST NOTIFICATION ===
   const [toast, setToast] = useState({ show: false, msg: "", type: "info" });
-  /* PART 2 of 7: Load Data & Parsing Logic */
-  /* ===== LOAD ALL DATA ===== */
+/* PART 2 of 7: Load Data & Parsing Logic */
+
+  /* ===== LOAD ALL DATA (STORE & TITIPAN) ===== */
   useEffect(() => {
     async function loadData() {
       setLoading(true);
       try {
+        // Load Data Toko Utama
         const resStore = await fetch(STORE_SHEET_URL);
         const textStore = await resStore.text();
         parseStoreData(textStore);
 
+        // Load Data Titipan Item
         const resTItems = await fetch(TITIPAN_ITEMS_URL);
         const textTItems = await resTItems.text();
         parseTitipanItems(textTItems);
 
+        // Load Data Titipan Akun
         const resTAcc = await fetch(TITIPAN_ACCOUNTS_URL);
         const textTAcc = await resTAcc.text();
         parseTitipanAccounts(textTAcc);
 
+        // Load LocalStorage (Simpanan User)
         const savedIgn = localStorage.getItem("gearShopIGN");
         if (savedIgn) setIgn(savedIgn);
         const savedWa = localStorage.getItem("gearShopWA");
@@ -96,7 +107,7 @@ export default function Page() {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('kunci') === "firman123") {
             localStorage.setItem("gearshop_admin", "true");
-            alert("Mode Admin Aktif! Selamat bertugas."); // Admin alert biarin aja
+            alert("Mode Admin Aktif! Selamat bertugas."); 
         }
 
       } catch (err) {
@@ -115,6 +126,7 @@ export default function Page() {
       const c = r.split(",");
       const catRaw = c[0]?.trim() || "Uncategorized";
       
+      // Deteksi Hero Item
       if (catRaw.toUpperCase() === "#HERO") {
           return { kategori: "#HERO", nama: c[1]?.trim() || "Unknown", targetKategori: c[2]?.trim(), status: "System" };
       }
@@ -133,7 +145,7 @@ export default function Page() {
     const systemRow = parsed.find(item => item.kategori?.toUpperCase() === "#SYSTEM" && item.nama?.toUpperCase() === "STATUS_TOKO");
     const statusToko = systemRow ? systemRow.status?.toUpperCase() : "BUKA";
     const isAdmin = localStorage.getItem("gearshop_admin") === "true";
-
+    
     if (statusToko === "TUTUP") {
         setIsStoreOpen(false); setIsMaintenance(false);
     } else if (statusToko === "MT") {
@@ -143,18 +155,21 @@ export default function Page() {
         setIsStoreOpen(true); setIsMaintenance(false);
     }
 
-    // Hero Logic
+    // Pisahkan Hero Item & Item Biasa
     const heroRows = parsed.filter(item => item.kategori === "#HERO");
     const realItems = parsed.filter(item => item.kategori !== "#SYSTEM" && item.kategori !== "#HERO");
+    
     const matchedHeroes = [];
     heroRows.forEach(h => {
         const found = realItems.find(item => item.nama.toLowerCase() === h.nama.toLowerCase() && item.kategori.toLowerCase() === h.targetKategori?.toLowerCase());
         if (found) matchedHeroes.push(found);
     });
+    
     setHeroItems(matchedHeroes);
     setItems(realItems);
   };
 
+  // -- Parser Titipan Items --
   const parseTitipanItems = (text) => {
     const rows = text.split(/\r?\n/).slice(1);
     const data = rows.filter(r => r.trim() !== "").map(r => {
@@ -164,6 +179,7 @@ export default function Page() {
     setTitipanItems(data);
   };
 
+  // -- Parser Titipan Accounts --
   const parseTitipanAccounts = (text) => {
     const rows = text.split(/\r?\n/).slice(1);
     const data = rows.filter(r => r.trim() !== "").map(r => {
@@ -172,7 +188,9 @@ export default function Page() {
     });
     setTitipanAccounts(data);
   };
-/* PART 3 of 7: Auction Logic & Action Handlers (With Toast) */
+        /* PART 3 of 7: Auction, Gold Market Logic & Helpers */
+
+  /* ===== AUCTION TIMER & FETCH ===== */
   useEffect(() => {
     fetchAuction(); 
     const interval = setInterval(fetchAuction, 5000);
@@ -203,7 +221,88 @@ export default function Page() {
     } catch (error) { console.error("Err lelang", error); }
   }
 
-  /* ===== HELPERS BARU (IP & VALIDASI) ===== */
+  /* ===== GOLD MARKET LOGIC (NEW FEATURE) ===== */
+  
+  // 1. Fetch Data Gold Market
+  const fetchGoldData = async () => {
+      setGoldLoading(true);
+      try {
+          // Request dengan param type=gold
+          const res = await fetch(`${AUCTION_API}?type=gold&t=${new Date().getTime()}`);
+          const data = await res.json();
+          if (Array.isArray(data)) setGoldData(data);
+      } catch (e) { console.error("Err Gold", e); }
+      finally { setGoldLoading(false); }
+  };
+
+  // 2. Auto-fetch saat modal dibuka
+  useEffect(() => {
+      if (isGoldOpen) fetchGoldData();
+  }, [isGoldOpen]);
+
+  // 3. Handle Submit Iklan Gold
+  const handlePostGold = async () => {
+      // Validasi Input Form
+      if (!goldForm.nama || !goldForm.jumlah || !goldForm.harga || !goldForm.payment) {
+          showToast("Lengkapi semua data!", "error");
+          return;
+      }
+      // Validasi Identitas (IGN/WA wajib ada di LocalStorage/Cart)
+      if (!ign || !waNumber) {
+          showToast("Isi IGN & WA di menu Keranjang dulu!", "error");
+          setCartOpen(true);
+          return;
+      }
+
+      setGoldLoading(true);
+      try {
+          const ip = await getMyIP();
+          const payload = {
+              action: "post_gold",
+              ...goldForm,
+              wa: waNumber,
+              ip: ip
+          };
+
+          const res = await fetch(AUCTION_API, {
+              method: "POST", body: JSON.stringify(payload)
+          });
+          const result = await res.json();
+
+          if (result.status === "SUCCESS") {
+              // Tampilkan Alert Kode Token
+              alert(`✅ IKLAN TAYANG!\n\nKode Hapus: ${result.data.token}\n\n(Mohon screenshot/simpan kode ini untuk menghapus iklan nanti!)`);
+              setGoldView("list"); // Kembali ke list
+              fetchGoldData(); // Refresh data
+          } else {
+              showToast(result.message, "error");
+          }
+      } catch (e) { showToast("Gagal posting, cek koneksi.", "error"); }
+      finally { setGoldLoading(false); }
+  };
+
+  // 4. Handle Hapus Iklan Gold
+  const handleDeleteGold = async () => {
+      const token = prompt("Masukkan Kode Hapus iklan ini:");
+      if (!token) return;
+
+      setGoldLoading(true);
+      try {
+          const res = await fetch(AUCTION_API, {
+              method: "POST", body: JSON.stringify({ action: "delete_gold", token })
+          });
+          const result = await res.json();
+          if (result.status === "SUCCESS") {
+              showToast("Iklan berhasil dihapus!", "success");
+              fetchGoldData();
+          } else {
+              showToast(result.message, "error");
+          }
+      } catch (e) { showToast("Error koneksi", "error"); }
+      finally { setGoldLoading(false); }
+  };
+
+  /* ===== HELPERS ===== */
   const formatWaNumber = (num) => {
     if (!num) return null;
     let clean = num.replace(/\D/g, ''); 
@@ -218,23 +317,24 @@ export default function Page() {
     const data = await response.json(); return data.ip; } catch (error) { return "UNKNOWN"; }
   }
 
-  /* ===== ACTION HANDLERS BARU (BIN MODAL & VALIDASI TOAST) ===== */
-    /* ===== ACTION HANDLERS BARU (MODERN CONFIRM) ===== */
+  /* ===== AUCTION ACTION HANDLERS ===== */
   const handleBid = async (action, code = null) => {
-    // 1. Cek Racun & Validasi
+    // 1. Cek Blokir & Data User
     if (localStorage.getItem("gearshop_status") === "BANNED") { 
         showToast("Akses Anda diblokir.", "error"); return; 
     }
     if (!ign || !waNumber) { 
-        showToast("Wajib isi IGN dan WA di keranjang!", "error"); setCartOpen(true); return; 
+        showToast("Wajib isi IGN dan WA di keranjang!", "error");
+        setCartOpen(true); return; 
     }
     if (!isValidWhatsApp(waNumber)) { 
-        showToast("Nomor WA Tidak Valid (08xx only).", "error"); setCartOpen(true); return; 
+        showToast("Nomor WA Tidak Valid (08xx only).", "error");
+        setCartOpen(true); return; 
     }
 
     const amount = action === "BIN" ? auctionData.binPrice : parseInt(bidAmount);
     
-    // 2. LOGIC BIN: BUKA MODAL KODE DULU
+    // 2. Logic BIN (Buka Modal Kode dulu)
     if (action === "BIN" && !code) {
         if (auctionData.currentBid >= auctionData.binPrice) {
             showToast("Harga Bid sudah melewati harga BIN.", "error"); return;
@@ -242,7 +342,7 @@ export default function Page() {
         setIsBinModalOpen(true); return;
     }
 
-    // 3. VALIDASI BID BIASA
+    // 3. Validasi Bid Biasa
     if (action === "BID") {
         if (!amount || amount <= auctionData.currentBid) {
             showToast(`Minimal Bid: ${(auctionData.currentBid + auctionData.increment).toLocaleString('id-ID')}`, "error"); return;
@@ -250,25 +350,23 @@ export default function Page() {
         if (amount >= auctionData.binPrice) {
              showToast(`Bid ketinggian! Maksimal bid harus di bawah BIN.`, "error"); return;
         }
-        if ((amount - auctionData.currentBid) % auctionData.increment !== 0) {
+        // Cek kelipatan (sedikit toleransi jika start price ganjil)
+        if ((amount - auctionData.currentBid) % auctionData.increment !== 0 && auctionData.currentBid !== 0) {
             showToast(`Bid harus kelipatan ${auctionData.increment.toLocaleString('id-ID')}`, "error"); return;
         }
     }
     
-    // 4. BUKA MODAL KONFIRMASI (Bukan Alert Browser lagi)
+    // 4. Buka Konfirmasi Akhir
     setBidConfirm({ action, amount, code });
   };
 
-  // === FUNGSI BARU: EKSEKUSI SETELAH KLIK "GAS" ===
   const executeBid = async () => {
     if (!bidConfirm) return;
     const { action, amount, code } = bidConfirm;
     
     setBidLoading(true);
-    setBidConfirm(null); // Tutup modal
-    
-    // Toast Peringatan Delay
-    showToast("Memproses Bid... Mohon tunggu 3-5 detik...", "info");
+    setBidConfirm(null);
+    showToast("Memproses Bid... Mohon tunggu...", "info");
 
     try {
         const userIP = await getMyIP();
@@ -301,7 +399,7 @@ export default function Page() {
       const text = `Halo Admin, saya *${ign}* (WA: ${cleanWA}).\nSaya mau *BIN (Buy It Now)* item: *${auctionData.item}*.\n\nMohon kirimkan *Kode Konfirmasi BIN*-nya.\nSaya siap transaksi.`;
       window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
   };
-          /* PART 4 of 7: Calculator Logic, UI Helpers & Cart Functions */
+  /* PART 4 of 7: Calculator Logic, UI Helpers & Cart Functions */
 
   /* ===== LOGIC CALCULATOR (REALTIME & JUJUR) ===== */
   useEffect(() => {
@@ -366,6 +464,7 @@ export default function Page() {
     // KASUS NORMAL: Cari monster yang cocok
     let currentTarget = MONSTER_DB[0];
     let nextTarget = { name: "MAX LEVEL", min: powerScore };
+
     for (let i = 0; i < MONSTER_DB.length; i++) {
         if (powerScore >= MONSTER_DB[i].min) {
             currentTarget = MONSTER_DB[i];
@@ -383,10 +482,9 @@ export default function Page() {
     });
   };
 
-
-  /* ===== UI HELPERS & CART ===== */
+  /* ===== UI HELPERS & CART FUNCTIONS ===== */
   
-  // Fungsi Helper Toast (Pengganti Alert)
+  // Fungsi Helper Toast (Pengganti Alert Browser)
   const showToast = (msg, type = "info") => {
     setToast({ show: true, msg, type });
     setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
@@ -402,8 +500,10 @@ export default function Page() {
   
   const statusLabel = s => {
     const v = s?.toLowerCase();
-    if (v === "full") return "🟢 Full"; if (v === "ready") return "🔵 Ready";
-    if (v === "take") return "🟡 Take"; if (v === "kosong") return "🔴 Kosong";
+    if (v === "full") return "🟢 Full";
+    if (v === "ready") return "🔵 Ready";
+    if (v === "take") return "🟡 Take";
+    if (v === "kosong") return "🔴 Kosong";
     return s;
   };
 
@@ -418,7 +518,7 @@ export default function Page() {
 
   const updateQty = (item, qty) => { if (qty < 1) return;
     setCart(cart.map(c => c.key === item.key ? { ...c, qty } : c)); };
-
+  
   const removeFromCart = item => setCart(cart.filter(c => c.key !== item.key));
   
   const totalQty = cart.reduce((s, c) => s + c.qty, 0);
@@ -426,7 +526,6 @@ export default function Page() {
 
   const handleCheckoutClick = () => {
     if (!cart.length) return;
-    // GANTI ALERT JADI TOAST
     if (!ign) { showToast("Mohon isi IGN (Nickname Game) dulu ya!", "error"); return; }
     setCartOpen(false); setConfirmOpen(true);
   };
@@ -441,6 +540,7 @@ export default function Page() {
     setConfirmOpen(false);
   };
 
+  // Helper WhatsApp Link
   const contactAdmin = () => window.open("https://wa.me/6283101456267?text=Halo%20Admin,%20mau%20tanya-tanya%20dong.", "_blank");
   
   const contactOwner = (item, type) => {
@@ -454,40 +554,45 @@ export default function Page() {
       `Halo min, mau nitip jual item dong.\nNama item :\nHarga item :\nOwner item :\nHarga nego/fix :\nGambar item : (jika ada)` : `Halo min, mau titip jual akun dong.\nNickname :\nLevel :\nMelee :\nDistance :\nMagic :\nDefense :\nSet :\nOwner :\nNego/Fix :\nHarga : (bebas mau rp/gold)\nWajib MM/Tidak :\nGambar akun : (jika ada)`;
       window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
   };
-          /* PART 5 of 7: Styles, Filter, Main UI & Auction Card */
+  /* PART 5 of 7: Styles, Main Layout & Auction UI */
 
   const categories = ["All", ...new Set(items.map(i => i.kategori))];
   const filteredItems = items.filter(i => (i.nama.toLowerCase().includes(search.toLowerCase())) && (category === "All" || i.kategori === category)).sort((a, b) => sort === "buy-asc" ? a.buy - b.buy : sort === "buy-desc" ? b.buy - a.buy : 0);
   
-  const theme = { bg: darkMode ? "#121212" : "#f5f5f5", text: darkMode ? "#e0e0e0" : "#333", cardBg: darkMode ?
-  "#1e1e1e" : "#fff", border: darkMode ? "1px solid #333" : "1px solid #ddd", modalBg: darkMode ?
-  "#222" : "#fff", accent: "#B8860B", inputBg: darkMode ? "#2c2c2c" : "#fff", subText: darkMode ? "#aaa" : "#666", auctionBg: darkMode ?
-  "linear-gradient(135deg, #2c0000 0%, #4a0000 100%)" : "linear-gradient(135deg, #fff0f0 0%, #ffe0e0 100%)" };
+  // Theme Configuration (Dark Mode Default)
+  const theme = { 
+      bg: darkMode ? "#121212" : "#f5f5f5", 
+      text: darkMode ? "#e0e0e0" : "#333", 
+      cardBg: darkMode ? "#1e1e1e" : "#fff", 
+      border: darkMode ? "1px solid #333" : "1px solid #ddd", 
+      modalBg: darkMode ? "#222" : "#fff", 
+      accent: "#B8860B", 
+      inputBg: darkMode ? "#2c2c2c" : "#fff", 
+      subText: darkMode ? "#aaa" : "#666", 
+      auctionBg: darkMode ? "linear-gradient(135deg, #2c0000 0%, #4a0000 100%)" : "linear-gradient(135deg, #fff0f0 0%, #ffe0e0 100%)" 
+  };
 
   const styles = {
       header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#1e293b", color: "#fff", borderBottom: theme.border, position: "sticky", top: 0, zIndex: 100 },
       cartIcon: { position: "relative", fontSize: 24, cursor: "pointer" },
       cartBadge: { position: "absolute", top: -5, right: -8, background: "red", color: "white", borderRadius: "50%", width: 18, height: 18, fontSize: 11, display: "flex", justifyContent: "center", alignItems: "center" },
       grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 },
-      
       card: { background: theme.cardBg, border: theme.border, borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 6 },
       input: { width: "100%", padding: 10, borderRadius: 6, border: theme.border, background: theme.inputBg, color: theme.text, marginBottom: 10, outline: "none" },
       btn: { background: theme.accent, color: "#fff", border: "none", padding: "8px", borderRadius: 4, cursor: "pointer", fontWeight: "bold" },
       modalOverlay: { position: "fixed", top:0, left:0, right:0, bottom:0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", justifyContent: "center", alignItems: "end" }, 
       modalContent: { background: theme.modalBg, width: "100%", height: "90vh", borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, overflowY: "auto", position: "relative" },
       tabContainer: { display: "flex", gap: 10, marginBottom: 20, borderBottom: theme.border, paddingBottom: 10 },
-      tabBtn: (active) => ({ flex: 1, padding: 10, borderRadius: 8, background: active ?
-      theme.accent : "transparent", color: active ? "#fff" : theme.text, border: active ?
-      "none" : theme.border, cursor: "pointer", fontWeight: "bold", textAlign: "center" }),
+      tabBtn: (active) => ({ flex: 1, padding: 10, borderRadius: 8, background: active ? theme.accent : "transparent", color: active ? "#fff" : theme.text, border: active ? "none" : theme.border, cursor: "pointer", fontWeight: "bold", textAlign: "center" }),
       fab: { position: "fixed", bottom: 30, right: 30, background: "#25D366", color: "white", width: 56, height: 56, borderRadius: "50%", display: "flex", justifyContent: "center", alignItems: "center", fontSize: 30, boxShadow: "0 4px 10px rgba(0,0,0,0.3)", cursor: "pointer", zIndex: 201 },
       fabMenu: { position: "fixed", bottom: 95, right: 30, display: "flex", flexDirection: "column", gap: 10, zIndex: 201 }
   };
 
-  if (!loading && isMaintenance) { return (<div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#121212", color: "#ffffff", fontFamily: "sans-serif", textAlign: "center", padding: "20px" }}><h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "10px", letterSpacing: "2px" }}>⚙️GEARSHOP⚙️</h1><h2 style={{ color: "#f1c40f", fontSize: "1.5rem", marginBottom: "20px", border: "2px solid #f1c40f", padding: "10px 20px", borderRadius: "8px", background: "rgba(241, 196, 15, 0.1)" }}>🚧 MAINTENANCE 🚧</h2><p style={{ fontSize: "1.1rem", marginBottom: "5px" }}>Silahkan cek dalam beberapa waktu lagi.</p><p style={{ fontSize: "1.1rem", fontWeight: "bold", marginTop: "20px" }}>Terimakasih 😁</p></div>);
-  }
+  // Maintenance View
+  if (!loading && isMaintenance) { return (<div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#121212", color: "#ffffff", fontFamily: "sans-serif", textAlign: "center", padding: "20px" }}><h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "10px", letterSpacing: "2px" }}>⚙️GEARSHOP⚙️</h1><h2 style={{ color: "#f1c40f", fontSize: "1.5rem", marginBottom: "20px", border: "2px solid #f1c40f", padding: "10px 20px", borderRadius: "8px", background: "rgba(241, 196, 15, 0.1)" }}>🚧 MAINTENANCE 🚧</h2><p style={{ fontSize: "1.1rem", marginBottom: "5px" }}>Silahkan cek dalam beberapa waktu lagi.</p><p style={{ fontSize: "1.1rem", fontWeight: "bold", marginTop: "20px" }}>Terimakasih 😁</p></div>); }
   
-  if (!loading && !isStoreOpen) { return (<div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20, textAlign: "center" }}><img src="/logo.png" height={60} alt="Logo" style={{marginBottom: 20}} /><h2 style={{color: "#FF4444", fontSize: 28, marginBottom: 10}}>🔴 TOKO TUTUP</h2><p style={{color: theme.subText, maxWidth: 300, marginBottom: 30}}>Maaf ya, admin lagi ❄️Natalan❄️. Cek lagi nanti ya!</p><button onClick={contactAdmin} style={{ background: "#25D366", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 50, fontSize: 16, fontWeight: "bold", cursor: "pointer" }}><span>💬 Chat WhatsApp Admin</span></button></div>);
-  }
+  // Store Closed View
+  if (!loading && !isStoreOpen) { return (<div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20, textAlign: "center" }}><img src="/logo.png" height={60} alt="Logo" style={{marginBottom: 20}} /><h2 style={{color: "#FF4444", fontSize: 28, marginBottom: 10}}>🔴 TOKO TUTUP</h2><p style={{color: theme.subText, maxWidth: 300, marginBottom: 30}}>Maaf ya, admin lagi istirahat. Cek lagi nanti ya!</p><button onClick={contactAdmin} style={{ background: "#25D366", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 50, fontSize: 16, fontWeight: "bold", cursor: "pointer" }}><span>💬 Chat WhatsApp Admin</span></button></div>); }
 
   return (
     <div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, fontFamily: "sans-serif", paddingBottom: 80 }}>
@@ -497,12 +602,17 @@ export default function Page() {
               <img src="/logo.png" height={36} alt="Logo" />
           </div>
           <div style={{display:"flex", alignItems:"center", gap: 15}}>
-              {/* === TOMBOL CALCULATOR BARU (Posisi Kiri Market) === */}
+              {/* TOMBOL FITUR BARU: GOLD MARKET */}
+              <div style={{cursor:"pointer", fontSize: 22}} onClick={() => setIsGoldOpen(true)}>🪙</div>
+              {/* TOMBOL CALCULATOR */}
               <div style={{cursor:"pointer", fontSize: 22}} onClick={() => setCalcOpen(true)}>🧮</div>
+              {/* TOMBOL PASAR TITIPAN */}
               <div style={{cursor:"pointer", fontSize: 22}} onClick={() => setMarketOpen(true)}>🏪</div>
+              {/* TOMBOL DARK MODE */}
               <div style={{cursor:"pointer", fontSize: 20}} onClick={toggleTheme}>{darkMode ? "☀️" : "🌙"}</div>
+              {/* TOMBOL CART */}
               <div style={styles.cartIcon} onClick={() => setCartOpen(true)}>
-                  🛒{cart.length > 0 && <span style={styles.cartBadge}>{totalQty}</span>}
+                   🛒{cart.length > 0 && <span style={styles.cartBadge}>{totalQty}</span>}
               </div>
           </div>
       </header>
@@ -558,9 +668,9 @@ export default function Page() {
             )}
         </div>
         )}
-          
+        /* PART 6 of 7: Store Grid, Calculator Modal & Titipan Market UI */
 
-        {/* HERO ITEM */}
+        {/* HERO ITEM (HOT ITEMS) */}
         {heroItems.length > 0 && (
         <div style={{ marginBottom: 20 }}>
             <h3 style={{ marginLeft: 8, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>🔥 Hot Items</h3>
@@ -603,7 +713,7 @@ export default function Page() {
               <div style={{fontWeight: "bold", fontSize: 16, color: "#FFD700"}}>{item.nama}<span style={{fontSize: 10, display:"block", color: theme.subText, fontWeight:"normal"}}>({item.kategori})</span></div>
               <div style={{fontSize: 12, color: status === 'full' ? '#4caf50' : status === 'kosong' ? '#f44336' : '#ff9800'}}>{statusLabel(item.status)}</div>
               <div style={{marginTop: "auto"}}>
-                   <button onClick={() => canBuy && addToCart(item, 'buy')} disabled={!canBuy} style={{...styles.btn, width: "100%", marginBottom: 4, background: canBuy ? theme.accent : "#555", opacity: canBuy ? 1 : 0.6, cursor: canBuy ? "pointer" : "not-allowed"}}>
+                  <button onClick={() => canBuy && addToCart(item, 'buy')} disabled={!canBuy} style={{...styles.btn, width: "100%", marginBottom: 4, background: canBuy ? theme.accent : "#555", opacity: canBuy ? 1 : 0.6, cursor: canBuy ? "pointer" : "not-allowed"}}>
                       {canBuy ? <span>Beli <span style={{color: "white", fontWeight: "bold"}}>{item.buy.toLocaleString('id-ID')}</span> 🪙</span> : (status === 'take' ? "Stok Habis" : "Tidak Tersedia")}
                   </button>
                   <button onClick={() => canSell && addToCart(item, 'sell')} disabled={!canSell} style={{...styles.btn, width: "100%", background: canSell ? "#333" : "#222", border: "1px solid #555", opacity: canSell ? 1 : 0.5, cursor: canSell ? "pointer" : "not-allowed"}}>
@@ -615,7 +725,7 @@ export default function Page() {
         </div>
       </main>
 
-      {/* === CALCULATOR MODAL (FITUR BARU) === */}
+      {/* === CALCULATOR MODAL === */}
       {calcOpen && (
         <div style={styles.modalOverlay}>
             <div style={{...styles.modalContent, background: "#1a1a1a", borderTop: "2px solid #FFD700"}}>
@@ -625,161 +735,79 @@ export default function Page() {
                     </h2>
                     <button onClick={()=>setCalcOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button>
                 </div>
-
-                {/* INPUT SECTION */}
                 <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10}}>
-                    <div>
-                        <label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Base Level</label>
-                        <input type="number" placeholder="ex: 300" value={calcInput.lvl} onChange={e => setCalcInput({...calcInput, lvl: e.target.value})} style={styles.input} />
-                    </div>
-                    <div>
-                        <label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Main Stat</label>
-                        <input type="number" placeholder="ex: 320" value={calcInput.stat} onChange={e => setCalcInput({...calcInput, stat: e.target.value})} style={styles.input} />
-                    </div>
+                    <div><label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Base Level</label><input type="number" placeholder="ex: 300" value={calcInput.lvl} onChange={e => setCalcInput({...calcInput, lvl: e.target.value})} style={styles.input} /></div>
+                    <div><label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Main Stat</label><input type="number" placeholder="ex: 320" value={calcInput.stat} onChange={e => setCalcInput({...calcInput, stat: e.target.value})} style={styles.input} /></div>
                 </div>
-
-                <div style={{marginBottom: 10}}>
-                    <label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Extra Stat (Ring/Neck)</label>
-                    <input type="number" placeholder="ex: 10 (Kosongkan jika 0)" value={calcInput.extra} onChange={e => setCalcInput({...calcInput, extra: e.target.value})} style={styles.input} />
-                </div>
-
-                <div style={{marginBottom: 15}}>
-                    <label style={{fontSize: 11, color: "#aaa", marginBottom: 6, display:"block"}}>Weapon Attack</label>
+                <div style={{marginBottom: 10}}><label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Extra Stat (Ring/Neck)</label><input type="number" placeholder="ex: 10 (Kosongkan jika 0)" value={calcInput.extra} onChange={e => setCalcInput({...calcInput, extra: e.target.value})} style={styles.input} /></div>
+                <div style={{marginBottom: 15}}><label style={{fontSize: 11, color: "#aaa", marginBottom: 6, display:"block"}}>Weapon Attack</label>
                     <div style={{display: "flex", gap: 8, overflowX: "auto", paddingBottom: 5}}>
-                        {[4, 5, 7, 9, 11, 15].map(atk => (
-                            <button key={atk} onClick={() => setCalcInput({...calcInput, wpn: atk})} 
-                            style={{
-                                flex: 1, minWidth: 40, padding: "8px 0", borderRadius: 6, fontWeight: "bold",
-                                background: calcInput.wpn === atk ? "#FFD700" : "#333",
-                                color: calcInput.wpn === atk ? "#000" : "#888",
-                                border: "none"
-                            }}>
-                                {atk}
-                            </button>
-                        ))}
+                        {[4, 5, 7, 9, 11, 15].map(atk => (<button key={atk} onClick={() => setCalcInput({...calcInput, wpn: atk})} style={{flex: 1, minWidth: 40, padding: "8px 0", borderRadius: 6, fontWeight: "bold", background: calcInput.wpn === atk ? "#FFD700" : "#333", color: calcInput.wpn === atk ? "#000" : "#888", border: "none"}}>{atk}</button>))}
                     </div>
                 </div>
-
                 <div style={{marginBottom: 20, background: "rgba(255,255,255,0.05)", padding: 10, borderRadius: 8}}>
                     <label style={{fontSize: 11, color: "#aaa", marginBottom: 8, display:"block"}}>Training Mode</label>
                     <div style={{display: "flex", gap: 10, marginBottom: 10}}>
-                         <button onClick={() => setCalcInput({...calcInput, mode: 'afk'})} style={{flex: 1, padding: 8, borderRadius: 6, border: calcInput.mode === 'afk' ? "1px solid #FFD700" : "1px solid #444", background: calcInput.mode === 'afk' ? "rgba(255, 215, 0, 0.1)" : "transparent", color: calcInput.mode === 'afk' ? "#FFD700" : "#888"}}>
-                            💤 AFK (x1)
-                         </button>
-                         <button onClick={() => setCalcInput({...calcInput, mode: 'ptrain'})} style={{flex: 1, padding: 8, borderRadius: 6, border: calcInput.mode === 'ptrain' ? "1px solid #FF4444" : "1px solid #444", background: calcInput.mode === 'ptrain' ? "rgba(255, 68, 68, 0.1)" : "transparent", color: calcInput.mode === 'ptrain' ? "#FF4444" : "#888"}}>
-                            🔥 Ptrain (x4)
-                         </button>
+                         <button onClick={() => setCalcInput({...calcInput, mode: 'afk'})} style={{flex: 1, padding: 8, borderRadius: 6, border: calcInput.mode === 'afk' ? "1px solid #FFD700" : "1px solid #444", background: calcInput.mode === 'afk' ? "rgba(255, 215, 0, 0.1)" : "transparent", color: calcInput.mode === 'afk' ? "#FFD700" : "#888"}}>💤 AFK (x1)</button>
+                         <button onClick={() => setCalcInput({...calcInput, mode: 'ptrain'})} style={{flex: 1, padding: 8, borderRadius: 6, border: calcInput.mode === 'ptrain' ? "1px solid #FF4444" : "1px solid #444", background: calcInput.mode === 'ptrain' ? "rgba(255, 68, 68, 0.1)" : "transparent", color: calcInput.mode === 'ptrain' ? "#FF4444" : "#888"}}>🔥 Ptrain (x4)</button>
                     </div>
-                    {calcInput.mode === 'ptrain' && (
-                        <div style={{display:"flex", alignItems:"center", gap: 8, fontSize: 13, color: theme.text}}>
-                            <input type="checkbox" checked={calcInput.magic} onChange={e => setCalcInput({...calcInput, magic: e.target.checked})} style={{width: 16, height: 16}} />
-                            <span>Saya menggunakan Magic (Mage) 🧙‍♂️</span>
-                        </div>
-                    )}
+                    {calcInput.mode === 'ptrain' && (<div style={{display:"flex", alignItems:"center", gap: 8, fontSize: 13, color: theme.text}}><input type="checkbox" checked={calcInput.magic} onChange={e => setCalcInput({...calcInput, magic: e.target.checked})} style={{width: 16, height: 16}} /><span>Saya menggunakan Magic (Mage) 🧙‍♂️</span></div>)}
                 </div>
-
-                {/* RESULT SECTION */}
                 {calcResult && (
                     <div style={{marginTop: 20, padding: 15, borderRadius: 12, background: "linear-gradient(135deg, #222 0%, #111 100%)", border: "1px solid #444", position: "relative", overflow: "hidden"}}>
                          <div style={{position: "absolute", top: -10, right: -10, fontSize: 80, opacity: 0.1}}>🎯</div>
-                         
-                         <div style={{textAlign: "center", marginBottom: 15}}>
-                            <div style={{fontSize: 12, color: "#888"}}>Rekomendasi Monster</div>
-                            <div style={{fontSize: 28, fontWeight: "900", color: "#FFD700", textShadow: "0 0 10px rgba(255, 215, 0, 0.3)"}}>
-                                {calcResult.target.toUpperCase()}
-                            </div>
-                            <div style={{fontSize: 11, color: "#4caf50"}}>Power Score: {calcResult.score}</div>
-                         </div>
-
-                         <div style={{display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.05)", padding: 10, borderRadius: 8}}>
-                             <div style={{fontSize: 24}}>🔜</div>
-                             <div style={{flex: 1}}>
-                                 <div style={{fontSize: 10, color: "#aaa"}}>Next Target:</div>
-                                 <div style={{fontSize: 14, fontWeight: "bold", color: "#fff"}}>{calcResult.next}</div>
-                             </div>
-                             <div style={{textAlign: "right"}}>
-                                 <div style={{fontSize: 10, color: "#aaa"}}>Butuh Stat:</div>
-                                 <div style={{fontSize: 16, fontWeight: "bold", color: "#FF4444"}}>+{calcResult.need}</div>
-                             </div>
-                         </div>
+                         <div style={{textAlign: "center", marginBottom: 15}}><div style={{fontSize: 12, color: "#888"}}>Rekomendasi Monster</div><div style={{fontSize: 28, fontWeight: "900", color: "#FFD700", textShadow: "0 0 10px rgba(255, 215, 0, 0.3)"}}>{calcResult.target.toUpperCase()}</div><div style={{fontSize: 11, color: "#4caf50"}}>Power Score: {calcResult.score}</div></div>
+                         <div style={{display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.05)", padding: 10, borderRadius: 8}}><div style={{fontSize: 24}}>🔜</div><div style={{flex: 1}}><div style={{fontSize: 10, color: "#aaa"}}>Next Target:</div><div style={{fontSize: 14, fontWeight: "bold", color: "#fff"}}>{calcResult.next}</div></div><div style={{textAlign: "right"}}><div style={{fontSize: 10, color: "#aaa"}}>Butuh Stat:</div><div style={{fontSize: 16, fontWeight: "bold", color: "#FF4444"}}>+{calcResult.need}</div></div></div>
                     </div>
                 )}
             </div>
         </div>
       )}
-                    
 
-      {/* === PASAR WARGA MODAL (FIXED: SOLD Overlay & Relative Position) === */}
+      {/* === PASAR WARGA MODAL (TITIPAN) === */}
       {marketOpen && (
           <div style={styles.modalOverlay}>
             <div style={styles.modalContent}>
                 <div style={{display:"flex", justifyContent:"space-between", marginBottom: 20}}>
-                    <h2 style={{margin:0}}>🏪 Pasar Warga (v2.0)</h2>
+                    <h2 style={{margin:0}}>🏪 Pasar Warga</h2>
                     <button onClick={()=>setMarketOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button>
                 </div>
                 <div style={styles.tabContainer}>
                     <button style={styles.tabBtn(marketTab === 'items')} onClick={()=>setMarketTab('items')}>⚔️ ITEM</button>
                     <button style={styles.tabBtn(marketTab === 'accounts')} onClick={()=>setMarketTab('accounts')}>👤 AKUN</button>
                 </div>
-              
+                
                 <div style={marketTab === 'items' ? styles.grid : {...styles.grid, gridTemplateColumns: "1fr"}}>
-                    {/* LIST BARANG TITIPAN */}
+                    {/* ITEMS LIST */}
                     {marketTab === 'items' && titipanItems.map((item, idx) => (
                         <div key={idx} style={{...styles.card, position: "relative", opacity: item.status?.toLowerCase() === 'sold' ? 0.6 : 1}}>
-                            {item.status?.toLowerCase() === 'sold' && (
-                                <div style={{position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", color:"red", fontWeight:"bold", fontSize:20, zIndex:2, borderRadius: 8}}>SOLD</div>
-                            )}
+                            {item.status?.toLowerCase() === 'sold' && (<div style={{position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", color:"red", fontWeight:"bold", fontSize:20, zIndex:2, borderRadius: 8}}>SOLD</div>)}
                             <div style={{height: 100, background: "#333", borderRadius: 4, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden"}}>
                                 {item.img ? <img src={item.img} alt={item.nama} style={{width:"100%", height:"100%", objectFit:"cover"}} onError={(e)=>{e.target.onerror=null; e.target.src="https://placehold.co/100x100?text=No+Image"}} /> : <span style={{fontSize:40}}>📦</span>}
                             </div>
                             <div style={{fontWeight:"bold", color: "#FFD700", fontSize: 14}}>{item.nama}</div>
                             <div style={{fontSize: 12, color: theme.text}}>By: {item.owner}</div>
-                            <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 4}}>
-                                <span style={{color: "#4caf50", fontWeight:"bold"}}>{item.harga}</span>
-                                <span style={{fontSize: 10, padding: "2px 6px", borderRadius: 4, background: item.tipeHarga === 'Nego' ? '#FFA500' : '#2196F3', color:'white'}}>{item.tipeHarga}</span>
-                            </div>
+                            <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 4}}><span style={{color: "#4caf50", fontWeight:"bold"}}>{item.harga}</span><span style={{fontSize: 10, padding: "2px 6px", borderRadius: 4, background: item.tipeHarga === 'Nego' ? '#FFA500' : '#2196F3', color:'white'}}>{item.tipeHarga}</span></div>
                             <button onClick={()=>contactOwner(item, 'item')} style={{...styles.btn, marginTop:8, fontSize: 12}}>💬 Chat Owner</button>
                         </div>
                     ))}
-
-                    {/* LIST AKUN TITIPAN */}
+                    {/* ACCOUNTS LIST */}
                     {marketTab === 'accounts' && titipanAccounts.map((acc, idx) => (
                         <div key={idx} style={{...styles.card, flexDirection: "row", gap: 12, alignItems: "center", position: "relative", opacity: acc.status?.toLowerCase() === 'sold' ? 0.6 : 1}}>
-                            {acc.status?.toLowerCase() === 'sold' && (
-                                <div style={{position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", color:"red", fontWeight:"bold", fontSize:20, zIndex:2, borderRadius: 8}}>SOLD</div>
-                            )}
+                            {acc.status?.toLowerCase() === 'sold' && (<div style={{position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", color:"red", fontWeight:"bold", fontSize:20, zIndex:2, borderRadius: 8}}>SOLD</div>)}
                             <div style={{width: 80, height: 80, background: "#333", borderRadius: "50%", overflow:"hidden", flexShrink: 0}}>
                                 {acc.img ? <img src={acc.img} alt={acc.nama} style={{width:"100%", height:"100%", objectFit:"cover"}} onError={(e)=>{e.target.onerror=null; e.target.src="https://placehold.co/100x100?text=No+Image"}} /> : <div style={{width:"100%",height:"100%", display:"flex",alignItems:"center",justifyContent:"center", fontSize:30}}>👤</div>}
                             </div>
                             <div style={{flex: 1}}>
-                                <div style={{display:"flex", justifyContent:"space-between"}}>
-                                    <div style={{fontWeight:"bold", fontSize: 16, color: "#FFD700"}}>{acc.nama} <span style={{fontSize:12, color:"#aaa"}}>Lv.{acc.level}</span></div>
-                                    {acc.wajibMM?.toLowerCase() === 'ya' && <div style={{fontSize: 10, background: "red", color:"white", padding: "2px 6px", borderRadius: 4}}>🛡️ WAJIB MM</div>}
-                                </div>
-                                <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap: 4, fontSize: 11, margin: "8px 0", color: "#ccc", background:"rgba(255,255,255,0.05)", padding: 6, borderRadius: 4}}>
-                                    <div>⚔️ {acc.melee} | 🏹 {acc.dist}</div>
-                                    <div>✨ {acc.magic} | 🛡️ {acc.def}</div>
-                                </div>
+                                <div style={{display:"flex", justifyContent:"space-between"}}><div style={{fontWeight:"bold", fontSize: 16, color: "#FFD700"}}>{acc.nama} <span style={{fontSize:12, color:"#aaa"}}>Lv.{acc.level}</span></div>{acc.wajibMM?.toLowerCase() === 'ya' && <div style={{fontSize: 10, background: "red", color:"white", padding: "2px 6px", borderRadius: 4}}>🛡️ WAJIB MM</div>}</div>
+                                <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap: 4, fontSize: 11, margin: "8px 0", color: "#ccc", background:"rgba(255,255,255,0.05)", padding: 6, borderRadius: 4}}><div>⚔️ {acc.melee} | 🏹 {acc.dist}</div><div>✨ {acc.magic} | 🛡️ {acc.def}</div></div>
                                 <div style={{fontSize: 11, marginBottom: 4, color: "#aaa"}}>Set: {acc.setInfo}</div>
-                                <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 4}}>
-                                    <div>
-                                        <div style={{fontSize:10, color:"#aaa"}}>Owner: {acc.owner}</div>
-                                        <div style={{color: "#4caf50", fontWeight:"bold", fontSize: 14}}>{acc.harga}</div>
-                                    </div>
-                                    <button onClick={()=>contactOwner(acc, 'account')} style={{...styles.btn, fontSize: 12, background: "#333", border: "1px solid #555"}}>{acc.tipeHarga?.toLowerCase() === 'fix' ? '💬 Beli (Fix)' : '💬 Nego'}</button>
-                                </div>
+                                <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 4}}><div><div style={{fontSize:10, color:"#aaa"}}>Owner: {acc.owner}</div><div style={{color: "#4caf50", fontWeight:"bold", fontSize: 14}}>{acc.harga}</div></div><button onClick={()=>contactOwner(acc, 'account')} style={{...styles.btn, fontSize: 12, background: "#333", border: "1px solid #555"}}>{acc.tipeHarga?.toLowerCase() === 'fix' ? '💬 Beli (Fix)' : '💬 Nego'}</button></div>
                             </div>
                         </div>
                     ))}
-
-                    {((marketTab === 'items' && titipanItems.length === 0) || (marketTab === 'accounts' && titipanAccounts.length === 0)) && (
-                        <div style={{textAlign: "center", color: theme.subText, marginTop: 40, width: "100%", gridColumn: "1 / -1"}}>
-                            <div style={{fontSize: 40}}>🕵️</div>
-                            <p>Belum ada data saat ini.</p>
-                        </div>
-                    )}
+                    {((marketTab === 'items' && titipanItems.length === 0) || (marketTab === 'accounts' && titipanAccounts.length === 0)) && (<div style={{textAlign: "center", color: theme.subText, marginTop: 40, width: "100%", gridColumn: "1 / -1"}}><div style={{fontSize: 40}}>🕵️</div><p>Belum ada data saat ini.</p></div>)}
                 </div>
-                
                 <div style={styles.fab} onClick={() => setTitipMenuOpen(!titipMenuOpen)}>{titipMenuOpen ? "✕" : "+"}</div>
                 {titipMenuOpen && (
                     <div style={styles.fabMenu}>
@@ -789,6 +817,107 @@ export default function Page() {
                 )}
             </div>
           </div>
+      )}
+              /* PART 7 of 7: Gold Market Modal, Cart, Confirmations & Toast */
+
+      {/* === GOLD MARKET MODAL (NEW FEATURE) === */}
+      {isGoldOpen && (
+        <div style={styles.modalOverlay}>
+            <div style={{...styles.modalContent, background: "#0a0a0a", borderTop: "2px solid #FFD700"}}>
+                <div style={{display:"flex", justifyContent:"space-between", marginBottom: 15, alignItems:"center"}}>
+                    <h2 style={{margin:0, color: "#FFD700", display:"flex", alignItems:"center", gap:10}}>🪙 Gold Market <span style={{fontSize:10, background:"#333", padding:"2px 5px", borderRadius:4}}>P2P</span></h2>
+                    <button onClick={()=>setIsGoldOpen(false)} style={{background:"transparent", border:"none", color:"#fff", fontSize:24}}>✕</button>
+                </div>
+
+                {/* Warning Safety */}
+                <div style={{background:"rgba(255,0,0,0.1)", border:"1px solid #500", padding:10, borderRadius:8, fontSize:11, color:"#ff8888", marginBottom:15}}>
+                    ⚠️ <b>Hati-hati Penipuan!</b> Admin tidak bertanggung jawab atas transaksi Direct. Gunakan MM jika ragu.
+                </div>
+
+                {/* VIEW LIST */}
+                {goldView === 'list' && (
+                    <>
+                        <div style={{display:"flex", gap:10, marginBottom:15}}>
+                           <button onClick={()=>setGoldView('form')} style={{flex:1, padding:12, background:"#FFD700", color:"#000", border:"none", borderRadius:8, fontWeight:"bold"}}>+ PASANG IKLAN</button>
+                           <button onClick={fetchGoldData} style={{padding:"12px 15px", background:"#333", color:"#fff", border:"none", borderRadius:8}}>🔄</button>
+                        </div>
+                        
+                        {goldLoading ? <div style={{textAlign:"center", padding:20, color:"#888"}}>Loading Market...</div> : (
+                            <div style={{display:"flex", flexDirection:"column", gap:10}}>
+                                {goldData.map((g, i) => (
+                                    <div key={i} style={{background: g.tipe === 'JUAL' ? "linear-gradient(90deg, #1e251e 0%, #111 100%)" : "linear-gradient(90deg, #251e1e 0%, #111 100%)", padding:12, borderRadius:8, borderLeft: g.tipe === 'JUAL' ? "4px solid #4caf50" : "4px solid #f44336", position:"relative"}}>
+                                        {/* HEADER CARD */}
+                                        <div style={{display:"flex", justifyContent:"space-between", marginBottom:5}}>
+                                            <div style={{fontWeight:"bold", color: g.tipe === 'JUAL' ? "#4caf50" : "#f44336"}}>{g.tipe} <span style={{color:"#fff"}}>{g.jumlah}</span></div>
+                                            <div style={{fontSize:10, color:"#888"}}>{new Date(g.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                                        </div>
+                                        
+                                        {/* PRICE & INFO */}
+                                        <div style={{display:"flex", justifyContent:"space-between", alignItems:"center"}}>
+                                            <div style={{fontSize:18, fontWeight:"bold", color:"#FFD700"}}>Rp {parseInt(g.harga).toLocaleString('id-ID')}</div>
+                                            {g.trusted ? 
+                                                <div style={{background:"#1da1f2", color:"white", padding:"2px 6px", borderRadius:4, fontSize:10, display:"flex", alignItems:"center", gap:3}}>🛡️ TRUSTED</div> 
+                                                : <div style={{fontSize:10, color:"#aaa", border:"1px solid #555", padding:"2px 6px", borderRadius:4}}>{g.mm}</div>
+                                            }
+                                        </div>
+
+                                        <div style={{fontSize:11, color:"#aaa", margin:"5px 0"}}>By: {g.nama} • Pay: {g.payment}</div>
+
+                                        {/* ACTIONS */}
+                                        <div style={{display:"flex", gap:5, marginTop:8}}>
+                                            <button onClick={()=>{
+                                                const txt = `Halo ${g.nama}, saya liat iklan Gold Market: ${g.tipe} ${g.jumlah} seharga ${g.harga}. Masih ada?`;
+                                                window.open(`https://wa.me/${g.wa}?text=${encodeURIComponent(txt)}`, "_blank");
+                                            }} style={{flex:1, background:"#25D366", border:"none", borderRadius:4, color:"white", padding:6, fontSize:12, fontWeight:"bold"}}>💬 Chat WA</button>
+                                            
+                                            <button onClick={handleDeleteGold} style={{background:"#333", border:"none", borderRadius:4, color:"#888", padding:"6px 10px"}}>🗑️</button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {goldData.length === 0 && <div style={{textAlign:"center", color:"#555", padding:20}}>Belum ada iklan.</div>}
+                            </div>
+                        )}
+                    </>
+                )}
+
+                {/* VIEW FORM */}
+                {goldView === 'form' && (
+                    <div style={{display:"flex", flexDirection:"column", gap:10}}>
+                        <div style={{display:"flex", gap:10}}>
+                            <button onClick={()=>setGoldForm({...goldForm, tipe:"JUAL"})} style={{flex:1, padding:10, background: goldForm.tipe==="JUAL"?"#4caf50":"#333", color:"white", border:"none", borderRadius:6, fontWeight:"bold"}}>SAYA JUAL</button>
+                            <button onClick={()=>setGoldForm({...goldForm, tipe:"BELI"})} style={{flex:1, padding:10, background: goldForm.tipe==="BELI"?"#f44336":"#333", color:"white", border:"none", borderRadius:6, fontWeight:"bold"}}>SAYA BELI</button>
+                        </div>
+
+                        <input placeholder="Nama Penjual/Pembeli" value={goldForm.nama} onChange={e=>setGoldForm({...goldForm, nama:e.target.value})} style={styles.input} />
+                        <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10}}>
+                            <input placeholder="Jumlah (cth: 5kk)" value={goldForm.jumlah} onChange={e=>setGoldForm({...goldForm, jumlah:e.target.value})} style={styles.input} />
+                            <input type="number" placeholder="Harga (Rp)" value={goldForm.harga} onChange={e=>setGoldForm({...goldForm, harga:e.target.value})} style={styles.input} />
+                        </div>
+                        <input placeholder="Payment (Dana/BCA/dll)" value={goldForm.payment} onChange={e=>setGoldForm({...goldForm, payment:e.target.value})} style={styles.input} />
+                        
+                        <div style={{margin:"10px 0"}}>
+                            <label style={{color:"#aaa", fontSize:12, display:"block", marginBottom:5}}>Status Transaksi:</label>
+                            <div style={{display:"flex", gap:10}}>
+                                <label style={{display:"flex", alignItems:"center", gap:5, color:"#fff"}}>
+                                    <input type="radio" name="mm" checked={goldForm.mm === "Perlu MM"} onChange={()=>setGoldForm({...goldForm, mm:"Perlu MM"})} /> Perlu MM
+                                </label>
+                                <label style={{display:"flex", alignItems:"center", gap:5, color:"#FFD700"}}>
+                                    <input type="radio" name="mm" checked={goldForm.mm === "Direct/Trust"} onChange={()=>{
+                                        alert("Untuk mendapatkan badge TRUSTED, Anda harus diverifikasi admin dulu. Iklan akan tetap tayang tapi tanpa badge sampai diverifikasi.");
+                                        setGoldForm({...goldForm, mm:"Direct/Trust"});
+                                    }} /> Direct/Trusted
+                                </label>
+                            </div>
+                        </div>
+
+                        <div style={{display:"flex", gap:10, marginTop:10}}>
+                            <button onClick={()=>setGoldView('list')} style={{flex:1, padding:12, background:"transparent", border:"1px solid #555", color:"#fff", borderRadius:8}}>Batal</button>
+                            <button onClick={handlePostGold} disabled={goldLoading} style={{flex:1, padding:12, background:"#FFD700", border:"none", color:"#000", borderRadius:8, fontWeight:"bold"}}>{goldLoading ? "Posting..." : "SUBMIT IKLAN"}</button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
       )}
 
       {/* === MODAL VERIFIKASI BIN === */}
@@ -822,36 +951,29 @@ export default function Page() {
               <div style={{ background: theme.cardBg, width: "100%", maxWidth: 400, borderRadius: 12, padding: 20, border: "1px solid #555" }}><h2 style={{marginTop: 0, textAlign: "center"}}>📝 Konfirmasi Order</h2><div style={{background: "rgba(255,255,255,0.05)", padding: 10, borderRadius: 8, margin: "15px 0", maxHeight: 200, overflowY: "auto"}}>{cart.map((c, i) => (<div key={i} style={{fontSize: 14, marginBottom: 5, borderBottom: "1px dashed #444", paddingBottom: 5}}>{c.nama} <span style={{fontSize:10}}>({c.mode})</span> <div style={{float: "right"}}>x{c.qty}</div></div>))}</div><div style={{display:"flex", justifyContent:"space-between", fontSize: 18, fontWeight:"bold", marginBottom: 20, borderTop: "1px solid #555", paddingTop: 10}}><span>Total Bayar:</span><span style={{color: "#FFD700"}}>{totalPrice.toLocaleString('id-ID')} 🪙</span></div><div style={{display: "flex", gap: 10}}><button onClick={() => setConfirmOpen(false)} style={{flex: 1, padding: 12, background: "transparent", border: "1px solid #555", color: theme.text, borderRadius: 8, cursor: "pointer"}}>Batal</button><button onClick={processToWA} style={{flex: 1, padding: 12, background: "#25D366", border: "none", color: "white", borderRadius: 8, fontWeight: "bold", cursor: "pointer"}}>Lanjut WA ➤</button></div></div>
           </div>
       )}
-            {/* === MODAL KONFIRMASI BID MODERN (PENGGANTI ALERT) === */}
+      
+      {/* === MODAL KONFIRMASI BID MODERN === */}
       {bidConfirm && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.9)", zIndex: 600, display: "flex", justifyContent: "center", alignItems: "center", padding: 20 }}>
             <div style={{ background: theme.cardBg, border: "2px solid #FFD700", borderRadius: 16, padding: 25, maxWidth: 350, width: "100%", textAlign: "center", boxShadow: "0 0 40px rgba(255, 215, 0, 0.2)" }}>
                 <div style={{fontSize: 50, marginBottom: 10}}>🚀</div>
                 <h2 style={{ color: "#FFD700", margin: "0 0 10px 0" }}>Konfirmasi Bid</h2>
-                
                 <div style={{background: "rgba(255,255,255,0.05)", padding: 15, borderRadius: 10, margin: "15px 0"}}>
                     <div style={{fontSize: 12, color: "#aaa", textTransform: "uppercase"}}>Nominal Bid</div>
                     <div style={{fontSize: 28, fontWeight: "bold", color: "#fff"}}>{bidConfirm.amount.toLocaleString('id-ID')} 🪙</div>
                 </div>
-
                 <div style={{ fontSize: 13, color: theme.subText, marginBottom: 25, lineHeight: "1.5", background: "rgba(255, 165, 0, 0.1)", padding: 10, borderRadius: 8, border: "1px dashed #FFA500" }}>
-                    ⚠️ <b>Harap Tunggu!</b><br/>
-                    Setelah klik tombol di bawah, data butuh waktu <b>3-5 detik</b> untuk masuk ke Server. Jangan tutup halaman ya.
+                    ⚠️ <b>Harap Tunggu!</b><br/>Setelah klik tombol di bawah, data butuh waktu <b>3-5 detik</b> untuk masuk ke Server. Jangan tutup halaman ya.
                 </div>
-
                 <div style={{ display: "flex", gap: 10 }}>
-                    <button onClick={() => setBidConfirm(null)} style={{ flex: 1, padding: "12px", background: "transparent", border: "1px solid #555", color: theme.text, borderRadius: 8, cursor: "pointer", fontWeight: "bold" }}>
-                        Batal
-                    </button>
-                    <button onClick={executeBid} style={{ flex: 1, padding: "12px", background: "linear-gradient(45deg, #FFD700, #FFA500)", border: "none", color: "black", borderRadius: 8, fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 15px rgba(255, 215, 0, 0.3)" }}>
-                        GAS! 🚀
-                    </button>
+                    <button onClick={() => setBidConfirm(null)} style={{ flex: 1, padding: "12px", background: "transparent", border: "1px solid #555", color: theme.text, borderRadius: 8, cursor: "pointer", fontWeight: "bold" }}>Batal</button>
+                    <button onClick={executeBid} style={{ flex: 1, padding: "12px", background: "linear-gradient(45deg, #FFD700, #FFA500)", border: "none", color: "black", borderRadius: 8, fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 15px rgba(255, 215, 0, 0.3)" }}>GAS! 🚀</button>
                 </div>
             </div>
         </div>
       )}
 
-      {/* === KOMPONEN TOAST NOTIFICATION (BARU) === */}
+      {/* === TOAST NOTIFICATION === */}
       {toast.show && (
         <div style={{
             position: "fixed", bottom: 30, left: "50%", transform: "translateX(-50%)",
@@ -867,5 +989,5 @@ export default function Page() {
       )}
     </div>
   );
-                }
-                                                                                                                                          
+                      }
+                                                                                                                                                                       
