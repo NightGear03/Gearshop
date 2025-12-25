@@ -219,58 +219,61 @@ export default function Page() {
   }
 
   /* ===== ACTION HANDLERS BARU (BIN MODAL & VALIDASI TOAST) ===== */
+    /* ===== ACTION HANDLERS BARU (MODERN CONFIRM) ===== */
   const handleBid = async (action, code = null) => {
     // 1. Cek Racun & Validasi
     if (localStorage.getItem("gearshop_status") === "BANNED") { 
-        showToast("Akses Anda diblokir.", "error"); 
-        return; 
+        showToast("Akses Anda diblokir.", "error"); return; 
     }
     if (!ign || !waNumber) { 
-        showToast("Wajib isi IGN dan WA di keranjang!", "error"); 
-        setCartOpen(true); 
-        return; 
+        showToast("Wajib isi IGN dan WA di keranjang!", "error"); setCartOpen(true); return; 
     }
     if (!isValidWhatsApp(waNumber)) { 
-        showToast("Nomor WA Tidak Valid (08xx only).", "error"); 
-        setCartOpen(true); 
-        return; 
+        showToast("Nomor WA Tidak Valid (08xx only).", "error"); setCartOpen(true); return; 
     }
 
     const amount = action === "BIN" ? auctionData.binPrice : parseInt(bidAmount);
     
-    // 2. LOGIC BIN: BUKA MODAL DULU
+    // 2. LOGIC BIN: BUKA MODAL KODE DULU
     if (action === "BIN" && !code) {
         if (auctionData.currentBid >= auctionData.binPrice) {
-            showToast("Harga Bid sudah melewati harga BIN.", "error");
-            return;
+            showToast("Harga Bid sudah melewati harga BIN.", "error"); return;
         }
-        setIsBinModalOpen(true); // Buka Modal
-        return; // Stop di sini
+        setIsBinModalOpen(true); return;
     }
 
+    // 3. VALIDASI BID BIASA
     if (action === "BID") {
         if (!amount || amount <= auctionData.currentBid) {
-            showToast(`Minimal Bid: ${(auctionData.currentBid + auctionData.increment).toLocaleString('id-ID')}`, "error");
-            return;
+            showToast(`Minimal Bid: ${(auctionData.currentBid + auctionData.increment).toLocaleString('id-ID')}`, "error"); return;
         }
-        // [FIX] Cek Over-Bid di Frontend
         if (amount >= auctionData.binPrice) {
-             showToast(`Bid ketinggian! Maksimal bid harus di bawah ${auctionData.binPrice.toLocaleString('id-ID')}. Gunakan tombol BIN jika ingin langsung beli.`, "error");
-             return;
+             showToast(`Bid ketinggian! Maksimal bid harus di bawah BIN.`, "error"); return;
         }
         if ((amount - auctionData.currentBid) % auctionData.increment !== 0) {
-            showToast(`Bid harus kelipatan ${auctionData.increment.toLocaleString('id-ID')}`, "error");
-            return;
+            showToast(`Bid harus kelipatan ${auctionData.increment.toLocaleString('id-ID')}`, "error"); return;
         }
-        if (!confirm(`Yakin Bid ${formatGold(amount)}?`)) return;
     }
     
-    // 3. PROSES KIRIM DATA
+    // 4. BUKA MODAL KONFIRMASI (Bukan Alert Browser lagi)
+    setBidConfirm({ action, amount, code });
+  };
+
+  // === FUNGSI BARU: EKSEKUSI SETELAH KLIK "GAS" ===
+  const executeBid = async () => {
+    if (!bidConfirm) return;
+    const { action, amount, code } = bidConfirm;
+    
     setBidLoading(true);
+    setBidConfirm(null); // Tutup modal
+    
+    // Toast Peringatan Delay
+    showToast("Memproses Bid... Mohon tunggu 3-5 detik...", "info");
+
     try {
         const userIP = await getMyIP();
         const payload = { action, bid: amount, ign, wa: waNumber, ip: userIP };
-        if (action === "BIN" && code) payload.code = code; // Masukin kode kalau BIN
+        if (action === "BIN" && code) payload.code = code; 
 
         const response = await fetch(AUCTION_API, {
             method: "POST", body: JSON.stringify(payload), headers: { "Content-Type": "text/plain" }
@@ -292,7 +295,7 @@ export default function Page() {
         showToast("Koneksi Error", "error");
     } finally { setBidLoading(false); }
   };
-
+                  
   const requestBinCode = () => {
       const cleanWA = waNumber.replace(/\D/g, '');
       const text = `Halo Admin, saya *${ign}* (WA: ${cleanWA}).\nSaya mau *BIN (Buy It Now)* item: *${auctionData.item}*.\n\nMohon kirimkan *Kode Konfirmasi BIN*-nya.\nSaya siap transaksi.`;
