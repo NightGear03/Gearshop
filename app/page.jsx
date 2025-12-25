@@ -360,6 +360,14 @@ export default function Page() {
 
 
   /* ===== UI HELPERS & CART ===== */
+    // Fungsi pemanggil Toast (Ganti alert pake ini)
+  const showToast = (msg, type = "info") => {
+    setToast({ show: true, msg, type });
+    // Hilang otomatis setelah 3 detik
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+  };
+
+  
   const toggleTheme = () => {
     const newMode = !darkMode; setDarkMode(newMode);
     localStorage.setItem("gearShopTheme", newMode ? "dark" : "light");
