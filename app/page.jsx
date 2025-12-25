@@ -311,11 +311,17 @@ export default function Page() {
               setGoldView("list");
               fetchGoldData();
           } 
-          else if (result.status === "NEED_VERIFICATION") {
-                        else if (result.status === "NEED_VERIFICATION") {
+                    else if (result.status === "NEED_VERIFICATION") {
               // Buka modal modern, bukan confirm() jadul lagi
               setIsTrustedModalOpen(true);
           }
+          else {
+              showToast(result.message, "error");
+          }
+      } catch (e) { showToast("Gagal posting, cek koneksi.", "error"); }
+      finally { setGoldLoading(false); }
+  };
+
 
           else {
               showToast(result.message, "error");
