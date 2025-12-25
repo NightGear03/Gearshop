@@ -60,6 +60,9 @@ export default function Page() {
   const [darkMode, setDarkMode] = useState(true);
   const [isStoreOpen, setIsStoreOpen] = useState(true);
   const [isMaintenance, setIsMaintenance] = useState(false);
+    // === STATE BARU: TOAST NOTIFICATION ===
+  const [toast, setToast] = useState({ show: false, msg: "", type: "info" });
+  
   /* ===== LOAD ALL DATA ===== */
   useEffect(() => {
     async function loadData() {
