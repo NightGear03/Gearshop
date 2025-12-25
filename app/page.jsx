@@ -1,11 +1,10 @@
-/* PART 1 of 7: Imports, Config, & State Definitions */
+/* PART 1 of 7: Imports, Config & State Definitions */
 "use client";
 
 import { useEffect, useState } from "react";
 
-// === CONFIG URL (UPDATED) ===
-// URL Script Baru sesuai request user
-const AUCTION_API = "https://script.google.com/macros/s/AKfycbw9O7C7AWRmhqS50eppvELu8GoX2eYNkTF9y4jY2FjQKQ5zyOK0Vxg8mGTyt8bhL9hj/exec";
+// === CONFIG URL (NEW UPDATED) ===
+const AUCTION_API = "https://script.google.com/macros/s/AKfycby6jpE2HK1O_TNXH_eHryEGyvD19FNlAu85EUGAr8wGtOlrHugEaYErW8DTaXnSisBH/exec";
 
 const STORE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1LFLYLmzl-YbYaYoFpEInQKGGzA9nuGzDA_0w9ulArJs/export?format=csv";
 const TITIPAN_ITEMS_URL = "https://docs.google.com/spreadsheets/d/1cUZWSumhePJLLocTMRE0-Q4BMC5bKgCyftOkVqC5BI0/export?format=csv";
@@ -34,22 +33,32 @@ export default function Page() {
   });
   const [calcResult, setCalcResult] = useState(null);
 
-  /* ===== STATE GOLD MARKET (NEW FEATURE) ===== */
-  // State baru untuk fitur Jual Beli Gold P2P
+  /* ===== STATE GOLD MARKET (REMASTERED) ===== */
   const [isGoldOpen, setIsGoldOpen] = useState(false);
-  const [goldData, setGoldData] = useState([]); // Nampung data dari Sheet
-  const [goldView, setGoldView] = useState("list"); // 'list' atau 'form'
+  const [goldData, setGoldData] = useState([]);
+  const [goldView, setGoldView] = useState("list"); // 'list' or 'form'
   const [goldLoading, setGoldLoading] = useState(false);
+  
+  // Form State dengan Status Baru
   const [goldForm, setGoldForm] = useState({
-      tipe: "JUAL", // Default Jual
+      tipe: "JUAL",
       nama: "",
       jumlah: "",
       harga: "",
       payment: "",
-      mm: "Perlu MM" // Default
+      status: "Perlu MM", // Default (Kuning)
+      reqTrusted: false   // Logic request trusted badge
   });
 
-  /* ===== STATE CART & USER & CONFIRMATION ===== */
+  // State Fitur Baru: MM & Custom Modals
+  const [mmList, setMmList] = useState([]); // Nampung data Admin MM
+  const [isMMListOpen, setIsMMListOpen] = useState(false); // Modal List MM
+  
+  // Custom Modals (Pengganti Alert Browser)
+  const [successModal, setSuccessModal] = useState({ show: false, token: "" }); // Pas sukses post
+  const [deleteModal, setDeleteModal] = useState({ show: false, tokenInput: "" }); // Pas mau hapus
+
+  /* ===== STATE CART & USER ===== */
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -63,7 +72,6 @@ export default function Page() {
   const [timeLeft, setTimeLeft] = useState("Loading...");
   const [isAuctionExpanded, setIsAuctionExpanded] = useState(false);
   
-  // Modal BIN & Confirm Bid
   const [isBinModalOpen, setIsBinModalOpen] = useState(false);
   const [binCode, setBinCode] = useState("");
   const [bidConfirm, setBidConfirm] = useState(null);
@@ -80,22 +88,22 @@ export default function Page() {
     async function loadData() {
       setLoading(true);
       try {
-        // Load Data Toko Utama
+        // 1. Load Data Toko Utama
         const resStore = await fetch(STORE_SHEET_URL);
         const textStore = await resStore.text();
         parseStoreData(textStore);
 
-        // Load Data Titipan Item
+        // 2. Load Data Titipan Items
         const resTItems = await fetch(TITIPAN_ITEMS_URL);
         const textTItems = await resTItems.text();
         parseTitipanItems(textTItems);
 
-        // Load Data Titipan Akun
+        // 3. Load Data Titipan Accounts
         const resTAcc = await fetch(TITIPAN_ACCOUNTS_URL);
         const textTAcc = await resTAcc.text();
         parseTitipanAccounts(textTAcc);
 
-        // Load LocalStorage (Simpanan User)
+        // 4. Load LocalStorage (Data User Tersimpan)
         const savedIgn = localStorage.getItem("gearShopIGN");
         if (savedIgn) setIgn(savedIgn);
         const savedWa = localStorage.getItem("gearShopWA");
@@ -103,11 +111,13 @@ export default function Page() {
         const savedTheme = localStorage.getItem("gearShopTheme");
         if (savedTheme) setDarkMode(savedTheme === "dark");
         
-        // Cek Magic Link Admin
+        // 5. Cek Magic Link Admin (kunci=firman123)
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('kunci') === "firman123") {
             localStorage.setItem("gearshop_admin", "true");
-            alert("Mode Admin Aktif! Selamat bertugas."); 
+            // Ganti Alert browser jadi Toast nanti (di Part selanjutnya)
+            // Tapi sementara console log dulu biar aman
+            console.log("Mode Admin Aktif!"); 
         }
 
       } catch (err) {
@@ -141,7 +151,7 @@ export default function Page() {
       };
     });
 
-    // Logic Status Toko & MT
+    // Logic Status Toko & Maintenance
     const systemRow = parsed.find(item => item.kategori?.toUpperCase() === "#SYSTEM" && item.nama?.toUpperCase() === "STATUS_TOKO");
     const statusToko = systemRow ? systemRow.status?.toUpperCase() : "BUKA";
     const isAdmin = localStorage.getItem("gearshop_admin") === "true";
@@ -188,7 +198,7 @@ export default function Page() {
     });
     setTitipanAccounts(data);
   };
-        /* PART 3 of 7: Auction, Gold Market Logic & Helpers */
+    /* PART 3 of 7: Auction, Gold Market & MM Logic */
 
   /* ===== AUCTION TIMER & FETCH ===== */
   useEffect(() => {
@@ -221,35 +231,45 @@ export default function Page() {
     } catch (error) { console.error("Err lelang", error); }
   }
 
-  /* ===== GOLD MARKET LOGIC (NEW FEATURE) ===== */
+  /* ===== GOLD MARKET LOGIC (REMASTERED) ===== */
   
-  // 1. Fetch Data Gold Market
+  // 1. Fetch Gold Data
   const fetchGoldData = async () => {
       setGoldLoading(true);
       try {
-          // Request dengan param type=gold
           const res = await fetch(`${AUCTION_API}?type=gold&t=${new Date().getTime()}`);
           const data = await res.json();
-          if (Array.isArray(data)) setGoldData(data);
+          if (data.status === "SUCCESS" || data.status === "OK") setGoldData(data.data);
       } catch (e) { console.error("Err Gold", e); }
       finally { setGoldLoading(false); }
   };
 
-  // 2. Auto-fetch saat modal dibuka
+  // 2. Fetch MM List (Fitur Baru)
+  const fetchMMList = async () => {
+      try {
+          const res = await fetch(`${AUCTION_API}?type=mm&t=${new Date().getTime()}`);
+          const data = await res.json();
+          if (data.status === "SUCCESS" || data.status === "OK") setMmList(data.data);
+      } catch (e) { console.error("Err MM", e); }
+  };
+
+  // Auto-fetch saat modal dibuka
   useEffect(() => {
-      if (isGoldOpen) fetchGoldData();
+      if (isGoldOpen) {
+          fetchGoldData();
+          fetchMMList(); // Ambil data MM sekalian
+      }
   }, [isGoldOpen]);
 
   // 3. Handle Submit Iklan Gold
   const handlePostGold = async () => {
-      // Validasi Input Form
+      // Validasi Input Dasar
       if (!goldForm.nama || !goldForm.jumlah || !goldForm.harga || !goldForm.payment) {
           showToast("Lengkapi semua data!", "error");
           return;
       }
-      // Validasi Identitas (IGN/WA wajib ada di LocalStorage/Cart)
       if (!ign || !waNumber) {
-          showToast("Isi IGN & WA di menu Keranjang dulu!", "error");
+          showToast("Isi IGN & WA di Keranjang dulu!", "error");
           setCartOpen(true);
           return;
       }
@@ -261,7 +281,9 @@ export default function Page() {
               action: "post_gold",
               ...goldForm,
               wa: waNumber,
-              ip: ip
+              ip: ip,
+              // Kirim flag reqTrusted jika user pilih 'Trusted' (Badge Biru)
+              reqTrusted: goldForm.status === "Trusted"
           };
 
           const res = await fetch(AUCTION_API, {
@@ -270,11 +292,18 @@ export default function Page() {
           const result = await res.json();
 
           if (result.status === "SUCCESS") {
-              // Tampilkan Alert Kode Token
-              alert(`✅ IKLAN TAYANG!\n\nKode Hapus: ${result.data.token}\n\n(Mohon screenshot/simpan kode ini untuk menghapus iklan nanti!)`);
-              setGoldView("list"); // Kembali ke list
-              fetchGoldData(); // Refresh data
-          } else {
+              // Sukses -> Tampilkan Modal Sukses (Bukan Alert Browser)
+              setSuccessModal({ show: true, token: result.data.token });
+              setGoldView("list");
+              fetchGoldData();
+          } 
+          else if (result.status === "NEED_VERIFICATION") {
+              // Gagal Trusted -> Arahkan ke WA Admin (Pake confirm sementara karena ini edge case)
+              if(confirm("GAGAL: Nomor Anda belum terdaftar sebagai Trusted Seller.\n\nKlik OK untuk verifikasi ke Admin via WhatsApp.")) {
+                  window.open("https://wa.me/6283101456267?text=Halo%20Admin,%20saya%20mau%20verifikasi%20Trusted%20Seller.", "_blank");
+              }
+          }
+          else {
               showToast(result.message, "error");
           }
       } catch (e) { showToast("Gagal posting, cek koneksi.", "error"); }
@@ -283,7 +312,8 @@ export default function Page() {
 
   // 4. Handle Hapus Iklan Gold
   const handleDeleteGold = async () => {
-      const token = prompt("Masukkan Kode Hapus iklan ini:");
+      // Ambil token dari state modal (bukan prompt bawaan lagi)
+      const token = deleteModal.tokenInput;
       if (!token) return;
 
       setGoldLoading(true);
@@ -294,6 +324,7 @@ export default function Page() {
           const result = await res.json();
           if (result.status === "SUCCESS") {
               showToast("Iklan berhasil dihapus!", "success");
+              setDeleteModal({ show: false, tokenInput: "" }); // Tutup modal
               fetchGoldData();
           } else {
               showToast(result.message, "error");
@@ -315,91 +346,8 @@ export default function Page() {
   async function getMyIP() {
     try { const response = await fetch('https://api.ipify.org?format=json');
     const data = await response.json(); return data.ip; } catch (error) { return "UNKNOWN"; }
-  }
-
-  /* ===== AUCTION ACTION HANDLERS ===== */
-  const handleBid = async (action, code = null) => {
-    // 1. Cek Blokir & Data User
-    if (localStorage.getItem("gearshop_status") === "BANNED") { 
-        showToast("Akses Anda diblokir.", "error"); return; 
-    }
-    if (!ign || !waNumber) { 
-        showToast("Wajib isi IGN dan WA di keranjang!", "error");
-        setCartOpen(true); return; 
-    }
-    if (!isValidWhatsApp(waNumber)) { 
-        showToast("Nomor WA Tidak Valid (08xx only).", "error");
-        setCartOpen(true); return; 
-    }
-
-    const amount = action === "BIN" ? auctionData.binPrice : parseInt(bidAmount);
-    
-    // 2. Logic BIN (Buka Modal Kode dulu)
-    if (action === "BIN" && !code) {
-        if (auctionData.currentBid >= auctionData.binPrice) {
-            showToast("Harga Bid sudah melewati harga BIN.", "error"); return;
-        }
-        setIsBinModalOpen(true); return;
-    }
-
-    // 3. Validasi Bid Biasa
-    if (action === "BID") {
-        if (!amount || amount <= auctionData.currentBid) {
-            showToast(`Minimal Bid: ${(auctionData.currentBid + auctionData.increment).toLocaleString('id-ID')}`, "error"); return;
-        }
-        if (amount >= auctionData.binPrice) {
-             showToast(`Bid ketinggian! Maksimal bid harus di bawah BIN.`, "error"); return;
-        }
-        // Cek kelipatan (sedikit toleransi jika start price ganjil)
-        if ((amount - auctionData.currentBid) % auctionData.increment !== 0 && auctionData.currentBid !== 0) {
-            showToast(`Bid harus kelipatan ${auctionData.increment.toLocaleString('id-ID')}`, "error"); return;
-        }
-    }
-    
-    // 4. Buka Konfirmasi Akhir
-    setBidConfirm({ action, amount, code });
-  };
-
-  const executeBid = async () => {
-    if (!bidConfirm) return;
-    const { action, amount, code } = bidConfirm;
-    
-    setBidLoading(true);
-    setBidConfirm(null);
-    showToast("Memproses Bid... Mohon tunggu...", "info");
-
-    try {
-        const userIP = await getMyIP();
-        const payload = { action, bid: amount, ign, wa: waNumber, ip: userIP };
-        if (action === "BIN" && code) payload.code = code; 
-
-        const response = await fetch(AUCTION_API, {
-            method: "POST", body: JSON.stringify(payload), headers: { "Content-Type": "text/plain" }
-        });
-        const result = await response.json();
-
-        if (result.status === "BLOCKED") {
-            localStorage.setItem("gearshop_status", "BANNED");
-            showToast("ANDA DIBLOKIR!", "error");
-        } else if (result.status === "SUCCESS") {
-             setBidAmount("");
-             setBinCode(""); setIsBinModalOpen(false);
-             setTimeout(fetchAuction, 1500); 
-             showToast(result.message, "success");
-        } else {
-             showToast(result.message, "error");
-        }
-    } catch (error) { 
-        showToast("Koneksi Error", "error");
-    } finally { setBidLoading(false); }
-  };
-                  
-  const requestBinCode = () => {
-      const cleanWA = waNumber.replace(/\D/g, '');
-      const text = `Halo Admin, saya *${ign}* (WA: ${cleanWA}).\nSaya mau *BIN (Buy It Now)* item: *${auctionData.item}*.\n\nMohon kirimkan *Kode Konfirmasi BIN*-nya.\nSaya siap transaksi.`;
-      window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
-  };
-  /* PART 4 of 7: Calculator Logic, UI Helpers & Cart Functions */
+            }
+            /* PART 4 of 7: Calculator Logic, UI Helpers & Cart Functions */
 
   /* ===== LOGIC CALCULATOR (REALTIME & JUJUR) ===== */
   useEffect(() => {
@@ -526,6 +474,7 @@ export default function Page() {
 
   const handleCheckoutClick = () => {
     if (!cart.length) return;
+    // Pake Toast bukan Alert
     if (!ign) { showToast("Mohon isi IGN (Nickname Game) dulu ya!", "error"); return; }
     setCartOpen(false); setConfirmOpen(true);
   };
@@ -554,7 +503,7 @@ export default function Page() {
       `Halo min, mau nitip jual item dong.\nNama item :\nHarga item :\nOwner item :\nHarga nego/fix :\nGambar item : (jika ada)` : `Halo min, mau titip jual akun dong.\nNickname :\nLevel :\nMelee :\nDistance :\nMagic :\nDefense :\nSet :\nOwner :\nNego/Fix :\nHarga : (bebas mau rp/gold)\nWajib MM/Tidak :\nGambar akun : (jika ada)`;
       window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
   };
-  /* PART 5 of 7: Styles, Main Layout & Auction UI */
+      /* PART 5 of 7: Styles, Main Layout & Auction UI */
 
   const categories = ["All", ...new Set(items.map(i => i.kategori))];
   const filteredItems = items.filter(i => (i.nama.toLowerCase().includes(search.toLowerCase())) && (category === "All" || i.kategori === category)).sort((a, b) => sort === "buy-asc" ? a.buy - b.buy : sort === "buy-desc" ? b.buy - a.buy : 0);
@@ -565,26 +514,34 @@ export default function Page() {
       text: darkMode ? "#e0e0e0" : "#333", 
       cardBg: darkMode ? "#1e1e1e" : "#fff", 
       border: darkMode ? "1px solid #333" : "1px solid #ddd", 
-      modalBg: darkMode ? "#222" : "#fff", 
+      modalBg: darkMode ? "#1a1a1a" : "#fff", 
       accent: "#B8860B", 
       inputBg: darkMode ? "#2c2c2c" : "#fff", 
-      subText: darkMode ? "#aaa" : "#666", 
-      auctionBg: darkMode ? "linear-gradient(135deg, #2c0000 0%, #4a0000 100%)" : "linear-gradient(135deg, #fff0f0 0%, #ffe0e0 100%)" 
+      subText: darkMode ? "#aaa" : "#666",
+      // Gradient Auction Baru
+      auctionBg: darkMode ? "linear-gradient(135deg, #1a0505 0%, #2d0a0a 100%)" : "linear-gradient(135deg, #fff0f0 0%, #ffe0e0 100%)" 
   };
 
   const styles = {
-      header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#1e293b", color: "#fff", borderBottom: theme.border, position: "sticky", top: 0, zIndex: 100 },
+      header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#1e293b", color: "#fff", borderBottom: theme.border, position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 10px rgba(0,0,0,0.3)" },
       cartIcon: { position: "relative", fontSize: 24, cursor: "pointer" },
       cartBadge: { position: "absolute", top: -5, right: -8, background: "red", color: "white", borderRadius: "50%", width: 18, height: 18, fontSize: 11, display: "flex", justifyContent: "center", alignItems: "center" },
       grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 },
-      card: { background: theme.cardBg, border: theme.border, borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 6 },
-      input: { width: "100%", padding: 10, borderRadius: 6, border: theme.border, background: theme.inputBg, color: theme.text, marginBottom: 10, outline: "none" },
-      btn: { background: theme.accent, color: "#fff", border: "none", padding: "8px", borderRadius: 4, cursor: "pointer", fontWeight: "bold" },
-      modalOverlay: { position: "fixed", top:0, left:0, right:0, bottom:0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", justifyContent: "center", alignItems: "end" }, 
-      modalContent: { background: theme.modalBg, width: "100%", height: "90vh", borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, overflowY: "auto", position: "relative" },
+      
+      // Style Glassmorphism untuk Card
+      card: { background: theme.cardBg, border: theme.border, borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 6, transition: "transform 0.2s", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" },
+      
+      input: { width: "100%", padding: 12, borderRadius: 8, border: "1px solid #444", background: theme.inputBg, color: theme.text, marginBottom: 10, outline: "none", fontSize: 14 },
+      btn: { background: theme.accent, color: "#fff", border: "none", padding: "10px", borderRadius: 6, cursor: "pointer", fontWeight: "bold", transition: "0.2s" },
+      
+      // Modal Style Modern
+      modalOverlay: { position: "fixed", top:0, left:0, right:0, bottom:0, background: "rgba(0,0,0,0.85)", zIndex: 200, display: "flex", justifyContent: "center", alignItems: "center", backdropFilter: "blur(5px)" }, 
+      modalContent: { background: theme.modalBg, width: "100%", maxWidth: 500, maxHeight: "90vh", borderRadius: 16, padding: 20, overflowY: "auto", position: "relative", border: "1px solid #333", boxShadow: "0 10px 40px rgba(0,0,0,0.5)" },
+      
       tabContainer: { display: "flex", gap: 10, marginBottom: 20, borderBottom: theme.border, paddingBottom: 10 },
       tabBtn: (active) => ({ flex: 1, padding: 10, borderRadius: 8, background: active ? theme.accent : "transparent", color: active ? "#fff" : theme.text, border: active ? "none" : theme.border, cursor: "pointer", fontWeight: "bold", textAlign: "center" }),
-      fab: { position: "fixed", bottom: 30, right: 30, background: "#25D366", color: "white", width: 56, height: 56, borderRadius: "50%", display: "flex", justifyContent: "center", alignItems: "center", fontSize: 30, boxShadow: "0 4px 10px rgba(0,0,0,0.3)", cursor: "pointer", zIndex: 201 },
+      
+      fab: { position: "fixed", bottom: 30, right: 30, background: "#25D366", color: "white", width: 56, height: 56, borderRadius: "50%", display: "flex", justifyContent: "center", alignItems: "center", fontSize: 30, boxShadow: "0 4px 15px rgba(37, 211, 102, 0.4)", cursor: "pointer", zIndex: 201 },
       fabMenu: { position: "fixed", bottom: 95, right: 30, display: "flex", flexDirection: "column", gap: 10, zIndex: 201 }
   };
 
@@ -599,18 +556,19 @@ export default function Page() {
       {/* HEADER UTAMA */}
       <header style={styles.header}>
           <div style={{display:"flex", alignItems:"center", gap: 10}}>
-              <img src="/logo.png" height={36} alt="Logo" />
+              {/* Logo / Nama Toko */}
+              <div style={{fontWeight:"bold", fontSize: 20, letterSpacing:1}}>GEAR<span style={{color:"#3498db"}}>SHOP</span></div>
           </div>
-          <div style={{display:"flex", alignItems:"center", gap: 15}}>
-              {/* TOMBOL FITUR BARU: GOLD MARKET */}
-              <div style={{cursor:"pointer", fontSize: 22}} onClick={() => setIsGoldOpen(true)}>🪙</div>
-              {/* TOMBOL CALCULATOR */}
+          <div style={{display:"flex", alignItems:"center", gap: 20}}>
+              {/* TOMBOL FITUR BARU: GOLD MARKET (Icon Coin) */}
+              <div style={{cursor:"pointer", fontSize: 24, filter: "drop-shadow(0 0 5px rgba(255,215,0,0.5))"}} onClick={() => setIsGoldOpen(true)}>🪙</div>
+              {/* Calculator */}
               <div style={{cursor:"pointer", fontSize: 22}} onClick={() => setCalcOpen(true)}>🧮</div>
-              {/* TOMBOL PASAR TITIPAN */}
+              {/* Titipan */}
               <div style={{cursor:"pointer", fontSize: 22}} onClick={() => setMarketOpen(true)}>🏪</div>
-              {/* TOMBOL DARK MODE */}
+              {/* Dark Mode */}
               <div style={{cursor:"pointer", fontSize: 20}} onClick={toggleTheme}>{darkMode ? "☀️" : "🌙"}</div>
-              {/* TOMBOL CART */}
+              {/* Cart */}
               <div style={styles.cartIcon} onClick={() => setCartOpen(true)}>
                    🛒{cart.length > 0 && <span style={styles.cartBadge}>{totalQty}</span>}
               </div>
@@ -618,34 +576,35 @@ export default function Page() {
       </header>
 
       <main style={{ padding: 16 }}>
-        {/* === AUCTION CARD === */}
+        {/* === AUCTION CARD MODERN === */}
         {auctionData && auctionData.status !== "empty" && (
-        <div style={{ marginBottom: 24, borderRadius: 12, overflow: "hidden", boxShadow: "0 4px 20px rgba(255, 68, 68, 0.5)", border: "2px solid #FF4444", background: theme.auctionBg, transition: "all 0.3s ease" }}>
-            <div onClick={() => setIsAuctionExpanded(!isAuctionExpanded)} style={{ padding: "12px 16px", background: "linear-gradient(90deg, #880000 0%, #aa0000 100%)", color: "white", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ marginBottom: 24, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 32px rgba(255, 0, 0, 0.2)", border: "1px solid rgba(255, 68, 68, 0.3)", background: theme.auctionBg, backdropFilter: "blur(10px)" }}>
+            <div onClick={() => setIsAuctionExpanded(!isAuctionExpanded)} style={{ padding: "15px 20px", background: "linear-gradient(90deg, rgba(136,0,0,0.8) 0%, rgba(170,0,0,0.8) 100%)", color: "white", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{display:"flex", alignItems:"center", gap: 12}}>
-                    <div style={{fontSize: 20}}>🔨</div>
+                    <div style={{fontSize: 24}}>🔨</div>
                     <div>
-                        <div style={{fontSize: 11, opacity: 0.8, fontWeight:"bold", textTransform:"uppercase"}}>Live Auction {isAuctionExpanded ? "▼" : "▶"}</div>
-                        {!isAuctionExpanded && <div style={{fontSize: 15, fontWeight: "bold", color: "#FFD700"}}>{auctionData.item}</div>}
+                        <div style={{fontSize: 10, opacity: 0.9, fontWeight:"bold", textTransform:"uppercase", letterSpacing: 1}}>Live Auction {isAuctionExpanded ? "▼" : "▶"}</div>
+                        {!isAuctionExpanded && <div style={{fontSize: 16, fontWeight: "bold", color: "#FFD700", textShadow: "0 2px 4px rgba(0,0,0,0.5)"}}>{auctionData.item}</div>}
                     </div>
                 </div>
                 <div style={{textAlign: "right"}}>
-                    <div style={{fontSize: 14, fontWeight: "bold", fontFamily: "monospace", color: "#fff"}}>{timeLeft}</div>
+                    <div style={{fontSize: 16, fontWeight: "bold", fontFamily: "monospace", color: "#fff", background:"rgba(0,0,0,0.3)", padding:"4px 8px", borderRadius:6}}>{timeLeft}</div>
                 </div>
             </div>
+            
             {isAuctionExpanded && (
-            <div style={{ padding: 16, textAlign:"center" }}>
-                <strong style={{fontSize: 22, display:"block", marginBottom: 5, color: theme.text}}>{auctionData.item}</strong>
-                <div style={{fontSize: 32, fontWeight:"bold", color: "#25D366", textShadow: "0 0 15px rgba(37, 211, 102, 0.4)", margin: "5px 0"}}>{formatGold(auctionData.currentBid)}</div>
+            <div style={{ padding: 20, textAlign:"center" }}>
+                <strong style={{fontSize: 24, display:"block", marginBottom: 5, color: theme.text}}>{auctionData.item}</strong>
+                <div style={{fontSize: 36, fontWeight:"bold", color: "#25D366", textShadow: "0 0 20px rgba(37, 211, 102, 0.3)", margin: "10px 0"}}>{formatGold(auctionData.currentBid)}</div>
                 
-                <div style={{ marginTop: 15, background: "rgba(0,0,0,0.3)", borderRadius: 12, padding: "12px", textAlign: "left", border: "1px solid rgba(255,255,255,0.1)", maxHeight: 200, overflowY: "auto" }}>
-                    <div style={{fontSize:11, color:"#aaa", marginBottom:5, textTransform:"uppercase", letterSpacing:1, borderBottom:"1px solid #555", paddingBottom:4}}>Riwayat Bid Terakhir</div>
+                <div style={{ marginTop: 20, background: "rgba(0,0,0,0.2)", borderRadius: 12, padding: "15px", textAlign: "left", border: "1px solid rgba(255,255,255,0.05)", maxHeight: 220, overflowY: "auto" }}>
+                    <div style={{fontSize:11, color:"#aaa", marginBottom:10, textTransform:"uppercase", letterSpacing:1, borderBottom:"1px solid #444", paddingBottom:5}}>Riwayat Bid Terakhir</div>
                     {auctionData.history && auctionData.history.length > 0 ? (
                         auctionData.history.map((h, i) => (
-                            <div key={i} style={{display:"flex", justifyContent:"space-between", padding:"6px 0", borderBottom: "1px dashed rgba(255,255,255,0.1)", fontSize:13}}>
+                            <div key={i} style={{display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom: "1px dashed rgba(255,255,255,0.1)", fontSize:13}}>
                                 <span style={{color: h.type==="BIN"?"#FFD700":"#fff", fontWeight: h.type==="BIN"?"bold":"normal"}}>{h.name} {h.type==="BIN" && "⚡"}</span>
                                 <div style={{textAlign:"right", display:"flex", gap:10, alignItems:"center"}}>
-                                    <span style={{color:"#25D366"}}>{formatGold(h.bid)}</span>
+                                    <span style={{color:"#25D366", fontWeight:"bold"}}>{formatGold(h.bid)}</span>
                                     <span style={{fontSize:10, color:"#888"}}>{h.time}</span>
                                 </div>
                             </div>
@@ -654,13 +613,13 @@ export default function Page() {
                 </div>
 
                 {!auctionData.isEnded && (
-                <div style={{display:"flex", gap: 8, marginTop: 20}}>
-                    <input type="number" placeholder="Nominal Bid..." value={bidAmount} onChange={e => setBidAmount(e.target.value)} style={{...styles.input, flex: 1, marginBottom: 0}} />
-                    <button onClick={() => handleBid("BID")} disabled={bidLoading} style={{background: "#FF4444", color: "white", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold"}}>BID</button>
+                <div style={{display:"flex", gap: 10, marginTop: 25}}>
+                    <input type="number" placeholder="Nominal Bid..." value={bidAmount} onChange={e => setBidAmount(e.target.value)} style={{...styles.input, flex: 1, marginBottom: 0, height: 45}} />
+                    <button onClick={() => handleBid("BID")} disabled={bidLoading} style={{background: "#FF4444", color: "white", border: "none", borderRadius: 8, padding: "0 24px", fontWeight:"bold", height: 45, boxShadow: "0 4px 10px rgba(255,68,68,0.3)"}}>BID</button>
                     {auctionData.currentBid < auctionData.binPrice ? (
-                        <button onClick={() => handleBid("BIN")} disabled={bidLoading} style={{background: "#FFD700", color: "#000", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold"}}>BIN</button>
+                        <button onClick={() => handleBid("BIN")} disabled={bidLoading} style={{background: "#FFD700", color: "#000", border: "none", borderRadius: 8, padding: "0 24px", fontWeight:"bold", height: 45, boxShadow: "0 4px 10px rgba(255,215,0,0.3)"}}>BIN</button>
                     ) : (
-                        <button disabled style={{background: "#555", color: "#ccc", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold", cursor: "not-allowed"}}>BIN CLOSED</button>
+                        <button disabled style={{background: "#555", color: "#ccc", border: "none", borderRadius: 8, padding: "0 24px", fontWeight:"bold", cursor: "not-allowed", height: 45}}>BIN CLOSED</button>
                     )}
                 </div>
                 )}
@@ -668,7 +627,7 @@ export default function Page() {
             )}
         </div>
         )}
-        
+                   /* PART 6 of 7: Store Grid, Calculator Modal & Titipan Market UI */
 
         {/* HERO ITEM (HOT ITEMS) */}
         {heroItems.length > 0 && (
@@ -679,12 +638,12 @@ export default function Page() {
                 const status = item.status?.toLowerCase();
                 const canBuy = (status === 'ready' || status === 'full') && item.buy > 0;
                 return (
-                <div key={idx} style={{ minWidth: 140, background: theme.cardBg, border: theme.border, borderRadius: 8, padding: 10, display: "flex", flexDirection: "column", gap: 5 }}>
+                <div key={idx} style={{ minWidth: 140, background: theme.cardBg, border: theme.border, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column", gap: 5, boxShadow: "0 4px 10px rgba(0,0,0,0.2)" }}>
                     <div style={{fontWeight: "bold", fontSize: 14, color: "#FFD700", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"}}>{item.nama}</div>
                     <div style={{fontSize: 10, color: theme.subText, marginTop: -3}}>({item.targetKategori || item.kategori})</div>
                     <div style={{fontSize: 11, color: status === 'full' ? '#4caf50' : status === 'kosong' ? '#f44336' : '#ff9800'}}>{statusLabel(item.status)}</div>
                     <div style={{marginTop: "auto"}}>
-                        <button onClick={() => canBuy && addToCart(item, 'buy')} disabled={!canBuy} style={{...styles.btn, fontSize: 11, width: "100%", background: canBuy ? theme.accent : "#555", opacity: canBuy ? 1 : 0.7, cursor: canBuy ? "pointer" : "not-allowed"}}>
+                        <button onClick={() => canBuy && addToCart(item, 'buy')} disabled={!canBuy} style={{...styles.btn, fontSize: 11, width: "100%", background: canBuy ? theme.accent : "#333", opacity: canBuy ? 1 : 0.7, cursor: canBuy ? "pointer" : "not-allowed"}}>
                             {canBuy ? <span>Beli {item.buy.toLocaleString('id-ID')} 🪙</span> : (status === 'kosong' ? "Stok Habis" : "N/A")}
                         </button>
                     </div>
@@ -697,12 +656,12 @@ export default function Page() {
         {/* FILTER & SEARCH */}
         <div style={{ display: "flex", gap: 10, marginBottom: 20, overflowX: "auto", paddingBottom: 5 }}>
             {categories.map(c => (
-                <button key={c} onClick={() => setCategory(c)} style={{ padding: "8px 16px", borderRadius: 20, border: "none", background: category === c ? theme.accent : theme.cardBg, color: category === c ? "#fff" : theme.text, whiteSpace: "nowrap", cursor: "pointer", border: category === c ? "none" : theme.border }}>{c}</button>
+                <button key={c} onClick={() => setCategory(c)} style={{ padding: "8px 16px", borderRadius: 20, border: "none", background: category === c ? theme.accent : theme.cardBg, color: category === c ? "#fff" : theme.text, whiteSpace: "nowrap", cursor: "pointer", border: category === c ? "none" : theme.border, transition: "0.2s" }}>{c}</button>
             ))}
         </div>
         <input placeholder="Cari item..." value={search} onChange={e => setSearch(e.target.value)} style={styles.input} />
 
-        {/* LIST ITEM TOKO */}
+        {/* LIST ITEM TOKO (GRID) */}
         <div style={styles.grid}>
           {filteredItems.map((item, idx) => {
             const status = item.status?.toLowerCase();
@@ -713,7 +672,7 @@ export default function Page() {
               <div style={{fontWeight: "bold", fontSize: 16, color: "#FFD700"}}>{item.nama}<span style={{fontSize: 10, display:"block", color: theme.subText, fontWeight:"normal"}}>({item.kategori})</span></div>
               <div style={{fontSize: 12, color: status === 'full' ? '#4caf50' : status === 'kosong' ? '#f44336' : '#ff9800'}}>{statusLabel(item.status)}</div>
               <div style={{marginTop: "auto"}}>
-                  <button onClick={() => canBuy && addToCart(item, 'buy')} disabled={!canBuy} style={{...styles.btn, width: "100%", marginBottom: 4, background: canBuy ? theme.accent : "#555", opacity: canBuy ? 1 : 0.6, cursor: canBuy ? "pointer" : "not-allowed"}}>
+                  <button onClick={() => canBuy && addToCart(item, 'buy')} disabled={!canBuy} style={{...styles.btn, width: "100%", marginBottom: 4, background: canBuy ? theme.accent : "#333", opacity: canBuy ? 1 : 0.6, cursor: canBuy ? "pointer" : "not-allowed"}}>
                       {canBuy ? <span>Beli <span style={{color: "white", fontWeight: "bold"}}>{item.buy.toLocaleString('id-ID')}</span> 🪙</span> : (status === 'take' ? "Stok Habis" : "Tidak Tersedia")}
                   </button>
                   <button onClick={() => canSell && addToCart(item, 'sell')} disabled={!canSell} style={{...styles.btn, width: "100%", background: canSell ? "#333" : "#222", border: "1px solid #555", opacity: canSell ? 1 : 0.5, cursor: canSell ? "pointer" : "not-allowed"}}>
@@ -728,10 +687,10 @@ export default function Page() {
       {/* === CALCULATOR MODAL === */}
       {calcOpen && (
         <div style={styles.modalOverlay}>
-            <div style={{...styles.modalContent, background: "#1a1a1a", borderTop: "2px solid #FFD700"}}>
+            <div style={{...styles.modalContent, borderTop: "4px solid #FFD700"}}>
                 <div style={{display:"flex", justifyContent:"space-between", marginBottom: 20}}>
                     <h2 style={{margin:0, color: "#FFD700", display:"flex", alignItems:"center", gap: 10}}>
-                        🧮 Training Planner <span style={{fontSize: 10, background: "#333", padding:"2px 6px", borderRadius:4, color:"#fff"}}>v2.1</span>
+                        🧮 Training Planner
                     </h2>
                     <button onClick={()=>setCalcOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button>
                 </div>
@@ -818,101 +777,131 @@ export default function Page() {
             </div>
           </div>
       )}
-            
+                  /* PART 7 of 7: Gold Market UI (Skeleton, Modals & MM List) */
 
-      {/* === GOLD MARKET MODAL (NEW FEATURE) === */}
+      {/* === GOLD MARKET MODAL (REMASTERED) === */}
       {isGoldOpen && (
         <div style={styles.modalOverlay}>
-            <div style={{...styles.modalContent, background: "#0a0a0a", borderTop: "2px solid #FFD700"}}>
+            <div style={{...styles.modalContent, background: "#0a0a0a", borderTop: "4px solid #FFD700"}}>
                 <div style={{display:"flex", justifyContent:"space-between", marginBottom: 15, alignItems:"center"}}>
-                    <h2 style={{margin:0, color: "#FFD700", display:"flex", alignItems:"center", gap:10}}>🪙 Gold Market <span style={{fontSize:10, background:"#333", padding:"2px 5px", borderRadius:4}}>P2P</span></h2>
+                    <h2 style={{margin:0, color: "#FFD700", display:"flex", alignItems:"center", gap:10}}>🪙 Gold Market <span style={{fontSize:10, background:"#333", padding:"2px 5px", borderRadius:4}}>P2P v2.0</span></h2>
                     <button onClick={()=>setIsGoldOpen(false)} style={{background:"transparent", border:"none", color:"#fff", fontSize:24}}>✕</button>
                 </div>
 
-                {/* Warning Safety */}
-                <div style={{background:"rgba(255,0,0,0.1)", border:"1px solid #500", padding:10, borderRadius:8, fontSize:11, color:"#ff8888", marginBottom:15}}>
-                    ⚠️ <b>Hati-hati Penipuan!</b> Admin tidak bertanggung jawab atas transaksi Direct. Gunakan MM jika ragu.
+                {/* Banner Disclaimer */}
+                <div style={{background:"rgba(255,0,0,0.1)", border:"1px solid #500", padding:12, borderRadius:10, fontSize:11, color:"#ff8888", marginBottom:20, lineHeight: "1.4"}}>
+                    ⚠️ <b>KEAMANAN TRANSAKSI:</b> Gearshop adalah platform iklan. Gunakan <b>MM Resmi</b> untuk keamanan. Transaksi Direct tanpa MM berisiko tinggi.
                 </div>
 
-                {/* VIEW LIST */}
+                {/* VIEW LIST MARKET */}
                 {goldView === 'list' && (
                     <>
-                        <div style={{display:"flex", gap:10, marginBottom:15}}>
-                           <button onClick={()=>setGoldView('form')} style={{flex:1, padding:12, background:"#FFD700", color:"#000", border:"none", borderRadius:8, fontWeight:"bold"}}>+ PASANG IKLAN</button>
-                           <button onClick={fetchGoldData} style={{padding:"12px 15px", background:"#333", color:"#fff", border:"none", borderRadius:8}}>🔄</button>
+                        <div style={{display:"flex", gap:10, marginBottom:20}}>
+                           <button onClick={()=>setGoldView('form')} style={{flex:1, padding:14, background:"linear-gradient(45deg, #FFD700, #B8860B)", color:"#000", border:"none", borderRadius:10, fontWeight:"bold", boxShadow: "0 4px 15px rgba(184,134,11,0.3)"}}>+ PASANG IKLAN</button>
+                           <button onClick={fetchGoldData} style={{padding:"0 15px", background:"#222", color:"#fff", border:"1px solid #444", borderRadius:10}}>🔄</button>
                         </div>
                         
-                        {goldLoading ? <div style={{textAlign:"center", padding:20, color:"#888"}}>Loading Market...</div> : (
-                            <div style={{display:"flex", flexDirection:"column", gap:10}}>
+                        {/* 1. SKELETON LOADING (OPSI 1) */}
+                        {goldLoading ? (
+                            <div style={{display:"flex", flexDirection:"column", gap:12}}>
+                                {[1,2,3].map(i => (
+                                    <div key={i} className="shimmer" style={{height: 120, background: "#1a1a1a", borderRadius: 12, border: "1px solid #333"}}></div>
+                                ))}
+                                <style>{`
+                                    .shimmer {
+                                        background: linear-gradient(90deg, #1a1a1a 25%, #222 50%, #1a1a1a 75%);
+                                        background-size: 200% 100%;
+                                        animation: loading 1.5s infinite;
+                                    }
+                                    @keyframes loading {
+                                        0% { background-position: 200% 0; }
+                                        100% { background-position: -200% 0; }
+                                    }
+                                `}</style>
+                            </div>
+                        ) : (
+                            <div style={{display:"flex", flexDirection:"column", gap:12}}>
                                 {goldData.map((g, i) => (
-                                    <div key={i} style={{background: g.tipe === 'JUAL' ? "linear-gradient(90deg, #1e251e 0%, #111 100%)" : "linear-gradient(90deg, #251e1e 0%, #111 100%)", padding:12, borderRadius:8, borderLeft: g.tipe === 'JUAL' ? "4px solid #4caf50" : "4px solid #f44336", position:"relative"}}>
-                                        {/* HEADER CARD */}
-                                        <div style={{display:"flex", justifyContent:"space-between", marginBottom:5}}>
-                                            <div style={{fontWeight:"bold", color: g.tipe === 'JUAL' ? "#4caf50" : "#f44336"}}>{g.tipe} <span style={{color:"#fff"}}>{g.jumlah}</span></div>
-                                            <div style={{fontSize:10, color:"#888"}}>{new Date(g.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                                    <div key={i} style={{
+                                        background: "rgba(255,255,255,0.03)", 
+                                        backdropFilter: "blur(10px)",
+                                        padding:15, borderRadius:12, 
+                                        border: "1px solid rgba(255,255,255,0.1)",
+                                        borderLeft: g.status === 'Direct' ? "5px solid #ff4444" : (g.is_trusted ? "5px solid #1da1f2" : "5px solid #ffd700")
+                                    }}>
+                                        <div style={{display:"flex", justifyContent:"space-between", marginBottom:8}}>
+                                            <div style={{fontWeight:"900", color: g.tipe === 'JUAL' ? "#4caf50" : "#f44336", fontSize: 16}}>{g.tipe} <span style={{color:"#fff"}}>{g.jumlah}</span></div>
+                                            <div style={{fontSize:10, color:"#666"}}>{new Date(g.timestamp).toLocaleDateString()}</div>
                                         </div>
                                         
-                                        {/* PRICE & INFO */}
                                         <div style={{display:"flex", justifyContent:"space-between", alignItems:"center"}}>
-                                            <div style={{fontSize:18, fontWeight:"bold", color:"#FFD700"}}>Rp {parseInt(g.harga).toLocaleString('id-ID')}</div>
-                                            {g.trusted ? 
-                                                <div style={{background:"#1da1f2", color:"white", padding:"2px 6px", borderRadius:4, fontSize:10, display:"flex", alignItems:"center", gap:3}}>🛡️ TRUSTED</div> 
-                                                : <div style={{fontSize:10, color:"#aaa", border:"1px solid #555", padding:"2px 6px", borderRadius:4}}>{g.mm}</div>
-                                            }
+                                            <div style={{fontSize:22, fontWeight:"bold", color:"#FFD700"}}>Rp {parseInt(g.harga).toLocaleString('id-ID')}</div>
+                                            
+                                            {/* BADGE STATUS 3 WARNA */}
+                                            {g.is_trusted ? (
+                                                <div style={{background:"#1da1f2", color:"white", padding:"4px 10px", borderRadius:6, fontSize:10, fontWeight:"bold", display:"flex", alignItems:"center", gap:5}}>🛡️ TRUSTED</div>
+                                            ) : (
+                                                <div style={{
+                                                    background: g.status === 'Direct' ? "rgba(255,68,68,0.2)" : "rgba(255,215,0,0.1)",
+                                                    color: g.status === 'Direct' ? "#ff4444" : "#ffd700",
+                                                    border: g.status === 'Direct' ? "1px solid #ff4444" : "1px solid #ffd700",
+                                                    padding:"4px 10px", borderRadius:6, fontSize:10, fontWeight:"bold"
+                                                }}>
+                                                    {g.status === 'Direct' ? "⚠️ Direct" : "🤝 Perlu MM"}
+                                                </div>
+                                            )}
                                         </div>
 
-                                        <div style={{fontSize:11, color:"#aaa", margin:"5px 0"}}>By: {g.nama} • Pay: {g.payment}</div>
+                                        <div style={{fontSize:12, color:"#aaa", margin:"10px 0"}}>Oleh: <b>{g.nama}</b> • Via: {g.payment}</div>
 
-                                        {/* ACTIONS */}
-                                        <div style={{display:"flex", gap:5, marginTop:8}}>
+                                        <div style={{display:"flex", gap:8, marginTop:10}}>
                                             <button onClick={()=>{
-                                                const txt = `Halo ${g.nama}, saya liat iklan Gold Market: ${g.tipe} ${g.jumlah} seharga ${g.harga}. Masih ada?`;
+                                                const txt = `Halo ${g.nama}, saya minat Gold Market: ${g.tipe} ${g.jumlah} (Rp ${g.harga}).`;
                                                 window.open(`https://wa.me/${g.wa}?text=${encodeURIComponent(txt)}`, "_blank");
-                                            }} style={{flex:1, background:"#25D366", border:"none", borderRadius:4, color:"white", padding:6, fontSize:12, fontWeight:"bold"}}>💬 Chat WA</button>
+                                            }} style={{flex:2, background:"#25D366", border:"none", borderRadius:8, color:"white", padding:10, fontSize:13, fontWeight:"bold"}}>💬 Chat Seller</button>
                                             
-                                            <button onClick={handleDeleteGold} style={{background:"#333", border:"none", borderRadius:4, color:"#888", padding:"6px 10px"}}>🗑️</button>
+                                            {/* TOMBOL LIST MM (Hanya muncul jika bukan trusted) */}
+                                            {!g.is_trusted && (
+                                                <button onClick={()=>setIsMMListOpen(true)} style={{flex:1, background:"#333", color:"#ffd700", border:"1px solid #ffd700", borderRadius:8, fontSize:12}}>🛡️ List MM</button>
+                                            )}
+                                            
+                                            <button onClick={()=>setDeleteModal({show: true, tokenInput: ""})} style={{background:"rgba(255,255,255,0.05)", border:"none", borderRadius:8, color:"#666", padding:"0 15px"}}>🗑️</button>
                                         </div>
                                     </div>
                                 ))}
-                                {goldData.length === 0 && <div style={{textAlign:"center", color:"#555", padding:20}}>Belum ada iklan.</div>}
+                                {goldData.length === 0 && <div style={{textAlign:"center", color:"#444", padding:40}}>Belum ada iklan hari ini.</div>}
                             </div>
                         )}
                     </>
                 )}
 
-                {/* VIEW FORM */}
+                {/* VIEW FORM POSTING */}
                 {goldView === 'form' && (
-                    <div style={{display:"flex", flexDirection:"column", gap:10}}>
-                        <div style={{display:"flex", gap:10}}>
-                            <button onClick={()=>setGoldForm({...goldForm, tipe:"JUAL"})} style={{flex:1, padding:10, background: goldForm.tipe==="JUAL"?"#4caf50":"#333", color:"white", border:"none", borderRadius:6, fontWeight:"bold"}}>SAYA JUAL</button>
-                            <button onClick={()=>setGoldForm({...goldForm, tipe:"BELI"})} style={{flex:1, padding:10, background: goldForm.tipe==="BELI"?"#f44336":"#333", color:"white", border:"none", borderRadius:6, fontWeight:"bold"}}>SAYA BELI</button>
+                    <div style={{display:"flex", flexDirection:"column", gap:15}}>
+                        <div style={{display:"flex", gap:10, background: "#1a1a1a", padding: 5, borderRadius: 12}}>
+                            <button onClick={()=>setGoldForm({...goldForm, tipe:"JUAL"})} style={{flex:1, padding:12, background: goldForm.tipe==="JUAL"?"#4caf50":"transparent", color:"white", border:"none", borderRadius:10, fontWeight:"bold"}}>SAYA JUAL</button>
+                            <button onClick={()=>setGoldForm({...goldForm, tipe:"BELI"})} style={{flex:1, padding:12, background: goldForm.tipe==="BELI"?"#f44336":"transparent", color:"white", border:"none", borderRadius:10, fontWeight:"bold"}}>SAYA BELI</button>
                         </div>
 
-                        <input placeholder="Nama Penjual/Pembeli" value={goldForm.nama} onChange={e=>setGoldForm({...goldForm, nama:e.target.value})} style={styles.input} />
-                        <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10}}>
-                            <input placeholder="Jumlah (cth: 5kk)" value={goldForm.jumlah} onChange={e=>setGoldForm({...goldForm, jumlah:e.target.value})} style={styles.input} />
-                            <input type="number" placeholder="Harga (Rp)" value={goldForm.harga} onChange={e=>setGoldForm({...goldForm, harga:e.target.value})} style={styles.input} />
+                        <input placeholder="Nama Anda / Nickname" value={goldForm.nama} onChange={e=>setGoldForm({...goldForm, nama:e.target.value})} style={styles.input} />
+                        <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:12}}>
+                            <input placeholder="Jumlah Gold (cth: 3kk)" value={goldForm.jumlah} onChange={e=>setGoldForm({...goldForm, jumlah:e.target.value})} style={styles.input} />
+                            <input type="number" placeholder="Harga Rp (Angka)" value={goldForm.harga} onChange={e=>setGoldForm({...goldForm, harga:e.target.value})} style={styles.input} />
                         </div>
-                        <input placeholder="Payment (Dana/BCA/dll)" value={goldForm.payment} onChange={e=>setGoldForm({...goldForm, payment:e.target.value})} style={styles.input} />
+                        <input placeholder="Metode Pembayaran (Dana, BCA, dll)" value={goldForm.payment} onChange={e=>setGoldForm({...goldForm, payment:e.target.value})} style={styles.input} />
                         
-                        <div style={{margin:"10px 0"}}>
-                            <label style={{color:"#aaa", fontSize:12, display:"block", marginBottom:5}}>Status Transaksi:</label>
-                            <div style={{display:"flex", gap:10}}>
-                                <label style={{display:"flex", alignItems:"center", gap:5, color:"#fff"}}>
-                                    <input type="radio" name="mm" checked={goldForm.mm === "Perlu MM"} onChange={()=>setGoldForm({...goldForm, mm:"Perlu MM"})} /> Perlu MM
-                                </label>
-                                <label style={{display:"flex", alignItems:"center", gap:5, color:"#FFD700"}}>
-                                    <input type="radio" name="mm" checked={goldForm.mm === "Direct/Trust"} onChange={()=>{
-                                        alert("Untuk mendapatkan badge TRUSTED, Anda harus diverifikasi admin dulu. Iklan akan tetap tayang tapi tanpa badge sampai diverifikasi.");
-                                        setGoldForm({...goldForm, mm:"Direct/Trust"});
-                                    }} /> Direct/Trusted
-                                </label>
+                        <div>
+                            <label style={{color:"#888", fontSize:12, display:"block", marginBottom:10}}>Pilih Status Transaksi:</label>
+                            <div style={{display:"grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10}}>
+                                <button onClick={()=>setGoldForm({...goldForm, status: "Direct"})} style={{padding: 10, borderRadius: 8, fontSize: 11, fontWeight: "bold", border: "1px solid #ff4444", background: goldForm.status === "Direct" ? "#ff4444" : "transparent", color: goldForm.status === "Direct" ? "#fff" : "#ff4444"}}>⚠️ DIRECT</button>
+                                <button onClick={()=>setGoldForm({...goldForm, status: "Perlu MM"})} style={{padding: 10, borderRadius: 8, fontSize: 11, fontWeight: "bold", border: "1px solid #ffd700", background: goldForm.status === "Perlu MM" ? "#ffd700" : "transparent", color: goldForm.status === "Perlu MM" ? "#000" : "#ffd700"}}>🤝 PERLU MM</button>
+                                <button onClick={()=>setGoldForm({...goldForm, status: "Trusted"})} style={{padding: 10, borderRadius: 8, fontSize: 11, fontWeight: "bold", border: "1px solid #1da1f2", background: goldForm.status === "Trusted" ? "#1da1f2" : "transparent", color: goldForm.status === "Trusted" ? "#fff" : "#1da1f2"}}>🛡️ TRUSTED</button>
                             </div>
                         </div>
 
                         <div style={{display:"flex", gap:10, marginTop:10}}>
-                            <button onClick={()=>setGoldView('list')} style={{flex:1, padding:12, background:"transparent", border:"1px solid #555", color:"#fff", borderRadius:8}}>Batal</button>
-                            <button onClick={handlePostGold} disabled={goldLoading} style={{flex:1, padding:12, background:"#FFD700", border:"none", color:"#000", borderRadius:8, fontWeight:"bold"}}>{goldLoading ? "Posting..." : "SUBMIT IKLAN"}</button>
+                            <button onClick={()=>setGoldView('list')} style={{flex:1, padding:15, background:"transparent", border:"1px solid #444", color:"#888", borderRadius:12}}>Batal</button>
+                            <button onClick={handlePostGold} disabled={goldLoading} style={{flex:2, padding:15, background:"#FFD700", border:"none", color:"#000", borderRadius:12, fontWeight:"bold"}}>{goldLoading ? "Memproses..." : "SUBMIT IKLAN"}</button>
                         </div>
                     </div>
                 )}
@@ -920,74 +909,85 @@ export default function Page() {
         </div>
       )}
 
-      {/* === MODAL VERIFIKASI BIN === */}
-      {isBinModalOpen && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.9)", zIndex: 500, display: "flex", justifyContent: "center", alignItems: "center", padding: 20 }}>
-            <div style={{ background: theme.cardBg, border: "2px solid #FFD700", borderRadius: 12, padding: 25, maxWidth: 350, width: "100%", textAlign: "center", boxShadow: "0 0 30px rgba(255, 215, 0, 0.3)" }}>
-                <h2 style={{ color: "#FFD700", marginTop: 0 }}>🔐 Verifikasi BIN</h2>
-                <p style={{ color: theme.text, fontSize: 14 }}>Untuk mencegah <i>Hit & Run</i>, silahkan minta <b>Kode Konfirmasi</b> ke Admin via WhatsApp.</p>
-                <div style={{ margin: "20px 0", background: "rgba(255,255,255,0.05)", padding: 10, borderRadius: 8 }}><div style={{fontSize: 12, color: "#aaa"}}>Item yang akan di-BIN:</div><div style={{fontWeight: "bold", fontSize: 16, color: theme.text}}>{auctionData.item}</div><div style={{fontSize: 20, color: "#25D366", fontWeight: "bold", marginTop: 5}}>{formatGold(auctionData.binPrice)}</div></div>
-                <button onClick={requestBinCode} style={{ width: "100%", padding: "12px", background: "#25D366", color: "white", border: "none", borderRadius: 8, fontWeight: "bold", marginBottom: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><span>💬 Minta Kode ke WhatsApp</span></button>
-                <input placeholder="Masukkan Kode dari Admin..." value={binCode} onChange={(e) => setBinCode(e.target.value)} style={{ ...styles.input, textAlign: "center", fontSize: 18, letterSpacing: 2, textTransform: "uppercase" }} />
-                <div style={{ display: "flex", gap: 10 }}><button onClick={() => setIsBinModalOpen(false)} style={{ flex: 1, padding: 12, background: "transparent", border: "1px solid #555", color: theme.text, borderRadius: 8, cursor: "pointer" }}>Batal</button><button onClick={() => handleBid("BIN", binCode)} disabled={bidLoading || !binCode} style={{ flex: 1, padding: 12, background: "#FFD700", border: "none", color: "black", borderRadius: 8, fontWeight: "bold", cursor: (bidLoading || !binCode) ? "not-allowed" : "pointer", opacity: (!binCode) ? 0.5 : 1 }}>{bidLoading ? "Loading..." : "🔒 KONFIRMASI"}</button></div>
+      {/* === CUSTOM MODAL: LIST MM === */}
+      {isMMListOpen && (
+        <div style={styles.modalOverlay}>
+            <div style={{...styles.modalContent, maxWidth: 350, border: "1px solid #ffd700"}}>
+                <h3 style={{marginTop:0, color:"#ffd700"}}>🛡️ Admin MM Resmi</h3>
+                <p style={{fontSize:12, color:"#aaa"}}>Gunakan jasa MM resmi untuk menghindari penipuan.</p>
+                <div style={{display:"flex", flexDirection:"column", gap:10, margin: "20px 0"}}>
+                    {mmList.map((mm, i) => (
+                        <div key={i} onClick={()=>window.open(`https://wa.me/${mm.wa}?text=Halo%20${mm.nama},%20mau%20pakai%20jasa%20MM.`, "_blank")} style={{background:"#222", padding:12, borderRadius:10, display:"flex", justifyContent:"space-between", alignItems:"center", cursor:"pointer", border: "1px solid #333"}}>
+                            <div>
+                                <div style={{fontWeight:"bold", color:"#fff"}}>{mm.nama}</div>
+                                <div style={{fontSize:10, color: mm.status === 'Online' ? '#4caf50' : '#888'}}>● {mm.status}</div>
+                            </div>
+                            <div style={{fontSize:20}}>💬</div>
+                        </div>
+                    ))}
+                    {mmList.length === 0 && <div style={{textAlign:"center", color:"#555"}}>Belum ada admin MM.</div>}
+                </div>
+                <button onClick={()=>setIsMMListOpen(false)} style={{width:"100%", padding:12, background:"#333", color:"#fff", border:"none", borderRadius:8}}>Tutup</button>
             </div>
         </div>
       )}
 
-      {/* CART MODAL */}
-      {cartOpen && (
-        <div onClick={(e) => { if (e.target === e.currentTarget) setCartOpen(false); }} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", zIndex: 300, display: "flex", justifyContent: "end" }}>
-           <div style={{ width: "70%", maxWidth: 320, background: theme.modalBg, height: "100%", padding: 20, overflowY: "auto", borderLeft: theme.border, cursor: "default" }}>
-              <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20}}><h2>Keranjang</h2><button onClick={() => setCartOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button></div>
-              {cart.map(c => (<div key={c.key} style={{marginBottom: 15, paddingBottom: 15, borderBottom: "1px solid #333"}}><div style={{fontWeight:"bold"}}>{c.nama} ({c.mode})</div><div style={{fontSize:11, color: theme.subText}}>Kategori: {c.kategori}</div><div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 8}}><div>{formatGold(c.mode === 'buy' ? c.buy : c.sell)} x {c.qty}</div><div style={{display:"flex", gap: 10}}><button onClick={() => updateQty(c, c.qty - 1)}>-</button><button onClick={() => updateQty(c, c.qty + 1)}>+</button><button onClick={() => removeFromCart(c)} style={{background:"red", color:"white", border:"none", borderRadius:4}}>Hapus</button></div></div></div>))}
-              <div style={{marginTop: 20, paddingTop: 20, borderTop: "2px solid #555"}}><h4 style={{marginBottom: 10}}>Data Pembeli</h4><input placeholder="Nickname In-Game (IGN) *" value={ign} onChange={(e) => {setIgn(e.target.value); localStorage.setItem("gearShopIGN", e.target.value)}} style={styles.input} /><input placeholder="Nomor WhatsApp (Ex: 08123456789)" type="tel" value={waNumber} onChange={(e) => {setWaNumber(e.target.value); localStorage.setItem("gearShopWA", e.target.value)}} style={styles.input} /><div style={{display:"flex", justifyContent:"space-between", fontSize: 18, fontWeight:"bold", marginTop: 10}}><span>Total:</span><span>{formatGold(totalPrice)}</span></div><button onClick={handleCheckoutClick} style={{...styles.btn, width: "100%", background: "#25D366", padding: 15, marginTop: 20, fontSize: 16}}>WhatsApp Checkout 🚀</button></div>
-           </div>
+      {/* === CUSTOM MODAL: SUKSES POST (DENGAN COPY TOKEN) === */}
+      {successModal.show && (
+        <div style={styles.modalOverlay}>
+            <div style={{...styles.modalContent, maxWidth: 320, textAlign: "center", border: "2px solid #4caf50"}}>
+                <div style={{fontSize: 60, marginBottom: 15}}>✅</div>
+                <h2 style={{marginTop:0, color:"#4caf50"}}>IKLAN TAYANG!</h2>
+                <p style={{fontSize:13, color:"#aaa"}}>Simpan kode ini untuk menghapus iklan Anda nanti:</p>
+                <div style={{background: "#000", padding: 20, borderRadius: 12, fontSize: 32, fontWeight: "900", letterSpacing: 5, color: "#ffd700", margin: "15px 0", border: "1px dashed #4caf50", position:"relative"}}>
+                    {successModal.token}
+                </div>
+                <button onClick={() => {
+                    navigator.clipboard.writeText(successModal.token);
+                    showToast("Token disalin ke clipboard!", "success");
+                }} style={{background:"#222", color:"#fff", border:"1px solid #444", padding:"8px 15px", borderRadius:6, fontSize:12, marginBottom: 20}}>📋 Salin Kode</button>
+                <button onClick={()=>setSuccessModal({show: false, token: ""})} style={{width:"100%", padding:14, background:"#4caf50", color:"#fff", border:"none", borderRadius:10, fontWeight:"bold"}}>MENGERTI</button>
+            </div>
         </div>
       )}
 
-     {/* CONFIRMATION MODAL */}
-      {confirmOpen && (
-          <div onClick={(e) => { if (e.target === e.currentTarget) setConfirmOpen(false); }} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-              <div style={{ background: theme.cardBg, width: "100%", maxWidth: 400, borderRadius: 12, padding: 20, border: "1px solid #555" }}><h2 style={{marginTop: 0, textAlign: "center"}}>📝 Konfirmasi Order</h2><div style={{background: "rgba(255,255,255,0.05)", padding: 10, borderRadius: 8, margin: "15px 0", maxHeight: 200, overflowY: "auto"}}>{cart.map((c, i) => (<div key={i} style={{fontSize: 14, marginBottom: 5, borderBottom: "1px dashed #444", paddingBottom: 5}}>{c.nama} <span style={{fontSize:10}}>({c.mode})</span> <div style={{float: "right"}}>x{c.qty}</div></div>))}</div><div style={{display:"flex", justifyContent:"space-between", fontSize: 18, fontWeight:"bold", marginBottom: 20, borderTop: "1px solid #555", paddingTop: 10}}><span>Total Bayar:</span><span style={{color: "#FFD700"}}>{totalPrice.toLocaleString('id-ID')} 🪙</span></div><div style={{display: "flex", gap: 10}}><button onClick={() => setConfirmOpen(false)} style={{flex: 1, padding: 12, background: "transparent", border: "1px solid #555", color: theme.text, borderRadius: 8, cursor: "pointer"}}>Batal</button><button onClick={processToWA} style={{flex: 1, padding: 12, background: "#25D366", border: "none", color: "white", borderRadius: 8, fontWeight: "bold", cursor: "pointer"}}>Lanjut WA ➤</button></div></div>
-          </div>
+      {/* === CUSTOM MODAL: HAPUS IKLAN (PENGGANTI PROMPT) === */}
+      {deleteModal.show && (
+        <div style={styles.modalOverlay}>
+            <div style={{...styles.modalContent, maxWidth: 320, textAlign: "center", border: "1px solid #ff4444"}}>
+                <h3 style={{marginTop:0, color:"#ff4444"}}>Hapus Iklan?</h3>
+                <p style={{fontSize:12, color:"#aaa"}}>Masukkan 4 digit kode token iklan Anda untuk menghapus.</p>
+                <input 
+                    type="number" 
+                    placeholder="Kode Token (4 Digit)" 
+                    value={deleteModal.tokenInput}
+                    onChange={(e)=>setDeleteModal({...deleteModal, tokenInput: e.target.value})}
+                    style={{...styles.input, textAlign:"center", fontSize:24, letterSpacing:8, margin:"15px 0"}}
+                />
+                <div style={{display:"flex", gap:10}}>
+                    <button onClick={()=>setDeleteModal({show: false, tokenInput: ""})} style={{flex:1, padding:12, background:"transparent", border:"1px solid #444", color:"#888", borderRadius:8}}>Batal</button>
+                    <button onClick={handleDeleteGold} disabled={!deleteModal.tokenInput} style={{flex:1, padding:12, background:"#ff4444", color:"#fff", border:"none", borderRadius:8, fontWeight:"bold"}}>HAPUS</button>
+                </div>
+            </div>
+        </div>
       )}
+
+      {/* === KONTEN LAINNYA (CART, CONFIRM, TOAST) === */}
+      {/* ... [Pake Part 7 dari kode sebelumnya untuk Cart dan Toast] ... */}
       
-      {/* === MODAL KONFIRMASI BID MODERN === */}
-      {bidConfirm && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.9)", zIndex: 600, display: "flex", justifyContent: "center", alignItems: "center", padding: 20 }}>
-            <div style={{ background: theme.cardBg, border: "2px solid #FFD700", borderRadius: 16, padding: 25, maxWidth: 350, width: "100%", textAlign: "center", boxShadow: "0 0 40px rgba(255, 215, 0, 0.2)" }}>
-                <div style={{fontSize: 50, marginBottom: 10}}>🚀</div>
-                <h2 style={{ color: "#FFD700", margin: "0 0 10px 0" }}>Konfirmasi Bid</h2>
-                <div style={{background: "rgba(255,255,255,0.05)", padding: 15, borderRadius: 10, margin: "15px 0"}}>
-                    <div style={{fontSize: 12, color: "#aaa", textTransform: "uppercase"}}>Nominal Bid</div>
-                    <div style={{fontSize: 28, fontWeight: "bold", color: "#fff"}}>{bidConfirm.amount.toLocaleString('id-ID')} 🪙</div>
-                </div>
-                <div style={{ fontSize: 13, color: theme.subText, marginBottom: 25, lineHeight: "1.5", background: "rgba(255, 165, 0, 0.1)", padding: 10, borderRadius: 8, border: "1px dashed #FFA500" }}>
-                    ⚠️ <b>Harap Tunggu!</b><br/>Setelah klik tombol di bawah, data butuh waktu <b>3-5 detik</b> untuk masuk ke Server. Jangan tutup halaman ya.
-                </div>
-                <div style={{ display: "flex", gap: 10 }}>
-                    <button onClick={() => setBidConfirm(null)} style={{ flex: 1, padding: "12px", background: "transparent", border: "1px solid #555", color: theme.text, borderRadius: 8, cursor: "pointer", fontWeight: "bold" }}>Batal</button>
-                    <button onClick={executeBid} style={{ flex: 1, padding: "12px", background: "linear-gradient(45deg, #FFD700, #FFA500)", border: "none", color: "black", borderRadius: 8, fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 15px rgba(255, 215, 0, 0.3)" }}>GAS! 🚀</button>
-                </div>
-            </div>
-        </div>
-      )}
-
-      {/* === TOAST NOTIFICATION === */}
       {toast.show && (
         <div style={{
             position: "fixed", bottom: 30, left: "50%", transform: "translateX(-50%)",
             background: toast.type === "error" ? "#D32F2F" : "#388E3C",
             color: "#fff", padding: "12px 24px", borderRadius: 50,
-            boxShadow: "0 6px 16px rgba(0,0,0,0.4)", zIndex: 9999, fontWeight: "bold",
-            display: "flex", alignItems: "center", gap: 10, minWidth: 200, justifyContent: "center",
-            animation: "fadeIn 0.3s ease-out"
+            boxShadow: "0 6px 20px rgba(0,0,0,0.5)", zIndex: 9999, fontWeight: "bold",
+            display: "flex", alignItems: "center", gap: 10, animation: "slideUp 0.3s ease-out"
         }}>
-            <span style={{fontSize: 18}}>{toast.type === "error" ? "⚠️" : "✅"}</span> 
-            {toast.msg}
+            <style>{`@keyframes slideUp { from { bottom: -50px; opacity: 0; } to { bottom: 30px; opacity: 1; } }`}</style>
+            <span>{toast.type === "error" ? "⚠️" : "✅"}</span> {toast.msg}
         </div>
       )}
     </div>
   );
-                      }
-                                                                                                                                                                       
+              }
+                                      
