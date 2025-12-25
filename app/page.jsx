@@ -554,6 +554,18 @@ export default function Page() {
   return (
   <div style={{ background: theme.bg, minHeight: "100vh", width: "100%", overflowX: "hidden", color: theme.text, fontFamily: "sans-serif", paddingBottom: 80 }}>
 
+          {/* === GLOBAL STYLE (ANTI BLOCKING/HIGHLIGHT) === */}
+      <style>{`
+        * {
+            -webkit-tap-highlight-color: transparent !important;
+            user-select: none; 
+        }
+        input {
+            user-select: text !important; /* Biar kolom input tetep bisa diketik */
+        }
+      `}</style>
+
+    
       {/* HEADER UTAMA */}
       <header style={styles.header}>
           <div style={{display:"flex", alignItems:"center", gap: 10}}>
