@@ -822,6 +822,34 @@ export default function Page() {
               <div style={{ background: theme.cardBg, width: "100%", maxWidth: 400, borderRadius: 12, padding: 20, border: "1px solid #555" }}><h2 style={{marginTop: 0, textAlign: "center"}}>📝 Konfirmasi Order</h2><div style={{background: "rgba(255,255,255,0.05)", padding: 10, borderRadius: 8, margin: "15px 0", maxHeight: 200, overflowY: "auto"}}>{cart.map((c, i) => (<div key={i} style={{fontSize: 14, marginBottom: 5, borderBottom: "1px dashed #444", paddingBottom: 5}}>{c.nama} <span style={{fontSize:10}}>({c.mode})</span> <div style={{float: "right"}}>x{c.qty}</div></div>))}</div><div style={{display:"flex", justifyContent:"space-between", fontSize: 18, fontWeight:"bold", marginBottom: 20, borderTop: "1px solid #555", paddingTop: 10}}><span>Total Bayar:</span><span style={{color: "#FFD700"}}>{totalPrice.toLocaleString('id-ID')} 🪙</span></div><div style={{display: "flex", gap: 10}}><button onClick={() => setConfirmOpen(false)} style={{flex: 1, padding: 12, background: "transparent", border: "1px solid #555", color: theme.text, borderRadius: 8, cursor: "pointer"}}>Batal</button><button onClick={processToWA} style={{flex: 1, padding: 12, background: "#25D366", border: "none", color: "white", borderRadius: 8, fontWeight: "bold", cursor: "pointer"}}>Lanjut WA ➤</button></div></div>
           </div>
       )}
+            {/* === MODAL KONFIRMASI BID MODERN (PENGGANTI ALERT) === */}
+      {bidConfirm && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.9)", zIndex: 600, display: "flex", justifyContent: "center", alignItems: "center", padding: 20 }}>
+            <div style={{ background: theme.cardBg, border: "2px solid #FFD700", borderRadius: 16, padding: 25, maxWidth: 350, width: "100%", textAlign: "center", boxShadow: "0 0 40px rgba(255, 215, 0, 0.2)" }}>
+                <div style={{fontSize: 50, marginBottom: 10}}>🚀</div>
+                <h2 style={{ color: "#FFD700", margin: "0 0 10px 0" }}>Konfirmasi Bid</h2>
+                
+                <div style={{background: "rgba(255,255,255,0.05)", padding: 15, borderRadius: 10, margin: "15px 0"}}>
+                    <div style={{fontSize: 12, color: "#aaa", textTransform: "uppercase"}}>Nominal Bid</div>
+                    <div style={{fontSize: 28, fontWeight: "bold", color: "#fff"}}>{bidConfirm.amount.toLocaleString('id-ID')} 🪙</div>
+                </div>
+
+                <div style={{ fontSize: 13, color: theme.subText, marginBottom: 25, lineHeight: "1.5", background: "rgba(255, 165, 0, 0.1)", padding: 10, borderRadius: 8, border: "1px dashed #FFA500" }}>
+                    ⚠️ <b>Harap Tunggu!</b><br/>
+                    Setelah klik tombol di bawah, data butuh waktu <b>3-5 detik</b> untuk masuk ke Server. Jangan tutup halaman ya.
+                </div>
+
+                <div style={{ display: "flex", gap: 10 }}>
+                    <button onClick={() => setBidConfirm(null)} style={{ flex: 1, padding: "12px", background: "transparent", border: "1px solid #555", color: theme.text, borderRadius: 8, cursor: "pointer", fontWeight: "bold" }}>
+                        Batal
+                    </button>
+                    <button onClick={executeBid} style={{ flex: 1, padding: "12px", background: "linear-gradient(45deg, #FFD700, #FFA500)", border: "none", color: "black", borderRadius: 8, fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 15px rgba(255, 215, 0, 0.3)" }}>
+                        GAS! 🚀
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
 
       {/* === KOMPONEN TOAST NOTIFICATION (BARU) === */}
       {toast.show && (
