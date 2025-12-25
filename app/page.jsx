@@ -55,6 +55,7 @@ export default function Page() {
   const [isMMListOpen, setIsMMListOpen] = useState(false);
   const [successModal, setSuccessModal] = useState({ show: false, token: "" });
   const [deleteModal, setDeleteModal] = useState({ show: false, tokenInput: "" });
+  const [trustedModal, setTrustedModal] = useState(false);
 
   /* ===== STATE CART & USER ===== */
   const [cart, setCart] = useState([]);
@@ -310,10 +311,10 @@ export default function Page() {
               fetchGoldData();
           } 
                               else if (result.status === "NEED_VERIFICATION") {
-              if(confirm("GAGAL: Nomor Anda belum terdaftar sebagai Trusted Seller.\n\nKlik OK untuk verifikasi ke Admin via WhatsApp.")) {
-                  window.open("https://wa.me/6283101456267?text=Halo%20Admin,%20saya%20mau%20verifikasi%20Trusted%20Seller.", "_blank");
-              }
-          }
+    // Panggil modal modern
+    setTrustedModal(true); 
+}
+
 
   };
 
@@ -1237,6 +1238,45 @@ export default function Page() {
             </div>
         </div>
       )}
+
+            {/* === CUSTOM MODAL: VERIFIKASI TRUSTED (MODERN) === */}
+      {trustedModal && (
+        <div style={styles.modalOverlay}>
+            <div style={{...styles.modalContent, maxWidth: 350, textAlign: "center", border: "2px solid #FFD700", boxShadow: "0 0 30px rgba(255, 215, 0, 0.2)"}}>
+                <div style={{fontSize: 50, marginBottom: 15}}>🛡️</div>
+                <h2 style={{marginTop:0, color: "#FFD700"}}>Verifikasi Diperlukan</h2>
+                
+                <div style={{background: "rgba(255, 215, 0, 0.1)", padding: 15, borderRadius: 10, marginBottom: 20, border: "1px dashed #FFD700"}}>
+                    <p style={{fontSize: 13, color: theme.text, margin: 0, lineHeight: "1.5"}}>
+                        Nomor WhatsApp Anda belum terdaftar sebagai <b style={{color: "#FFD700"}}>Trusted Seller</b>.
+                    </p>
+                </div>
+
+                <p style={{fontSize: 12, color: theme.subText, marginBottom: 20}}>
+                    Untuk mencegah penipuan, status Trusted hanya diberikan setelah verifikasi identitas ke Admin.
+                </p>
+                
+                <div style={{display: "flex", gap: 10}}>
+                    <button 
+                        onClick={() => setTrustedModal(false)} 
+                        style={{flex: 1, padding: 12, background: "transparent", border: "1px solid #555", color: theme.text, borderRadius: 8, cursor: "pointer"}}
+                    >
+                        Batal
+                    </button>
+                    <button 
+                        onClick={() => {
+                            window.open("https://wa.me/6283101456267?text=Halo%20Admin,%20saya%20mau%20verifikasi%20Trusted%20Seller.", "_blank");
+                            setTrustedModal(false);
+                        }} 
+                        style={{flex: 1, padding: 12, background: "linear-gradient(45deg, #FFD700, #B8860B)", color: "black", border: "none", borderRadius: 8, fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 15px rgba(184,134,11,0.3)"}}
+                    >
+                        Verifikasi WA ➤
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+      
       
          
       {/* === TOAST NOTIFICATION === */}
