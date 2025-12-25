@@ -258,11 +258,11 @@ export default function Page() {
         const result = await response.json();
 
         if (result.status === "BLOCKED") {
-            localStorage.setItem("gearshop_status", "BANNED"); alert("ANDA DIBLOKIR!");
+            localStorage.setItem("gearshop_status", "BANNED"); showToast("ANDA DIBLOKIR!", "error");
         } else if (result.status === "SUCCESS") {
              setBidAmount(""); setBinCode(""); setIsBinModalOpen(false);
              setTimeout(fetchAuction, 1500); 
-             showToast(result.message);
+             showToast(result.message,"Success");
         } else {
              showToast(result.message);
         }
