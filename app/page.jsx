@@ -792,6 +792,27 @@ export default function Page() {
           <div onClick={(e) => { if (e.target === e.currentTarget) setConfirmOpen(false); }} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
               <div style={{ background: theme.cardBg, width: "100%", maxWidth: 400, borderRadius: 12, padding: 20, border: "1px solid #555" }}><h2 style={{marginTop: 0, textAlign: "center"}}>📝 Konfirmasi Order</h2><div style={{background: "rgba(255,255,255,0.05)", padding: 10, borderRadius: 8, margin: "15px 0", maxHeight: 200, overflowY: "auto"}}>{cart.map((c, i) => (<div key={i} style={{fontSize: 14, marginBottom: 5, borderBottom: "1px dashed #444", paddingBottom: 5}}>{c.nama} <span style={{fontSize:10}}>({c.mode})</span> <div style={{float: "right"}}>x{c.qty}</div></div>))}</div><div style={{display:"flex", justifyContent:"space-between", fontSize: 18, fontWeight:"bold", marginBottom: 20, borderTop: "1px solid #555", paddingTop: 10}}><span>Total Bayar:</span><span style={{color: "#FFD700"}}>{totalPrice.toLocaleString('id-ID')} 🪙</span></div><div style={{display: "flex", gap: 10}}><button onClick={() => setConfirmOpen(false)} style={{flex: 1, padding: 12, background: "transparent", border: "1px solid #555", color: theme.text, borderRadius: 8, cursor: "pointer"}}>Batal</button><button onClick={processToWA} style={{flex: 1, padding: 12, background: "#25D366", border: "none", color: "white", borderRadius: 8, fontWeight: "bold", cursor: "pointer"}}>Lanjut WA ➤</button></div></div>
           </div>
+        {/* ... kode modal confirmOpen di atasnya biarin aja ... */}
+      
+      {/* === KOMPONEN TOAST NOTIFICATION (BARU) === */}
+      {toast.show && (
+        <div style={{
+            position: "fixed", bottom: 30, left: "50%", transform: "translateX(-50%)",
+            background: toast.type === "error" ? "#D32F2F" : "#388E3C", // Merah Error / Hijau Sukses
+            color: "#fff", padding: "12px 24px", borderRadius: 50,
+            boxShadow: "0 6px 16px rgba(0,0,0,0.4)", zIndex: 9999, fontWeight: "bold",
+            display: "flex", alignItems: "center", gap: 10, minWidth: 200, justifyContent: "center",
+            animation: "fadeIn 0.3s ease-out"
+        }}>
+            <span style={{fontSize: 18}}>{toast.type === "error" ? "⚠️" : "✅"}</span> 
+            {toast.msg}
+        </div>
+      )}
+
+    </div> // <--- Ini div penutup utama yang asli
+  );
+}
+
       )}
     </div>
   );
