@@ -566,9 +566,32 @@ export default function Page() {
         paddingBottom: 80 
     }}>
       
-      {/* STYLE GLOBAL GALAK (Inject ke Body & HTML langsung) */}
+            {/* STYLE GLOBAL GALAK (Inject ke Body & HTML langsung) */}
       <style>{`
+        /* --- FIX LEBAR INPUT (PENTING) --- */
+        *, *::before, *::after {
+            box-sizing: border-box !important; /* Biar padding ga bikin lebar bablas */
+            -webkit-tap-highlight-color: transparent !important;
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
+            outline: none !important;
+        }
+
         html, body {
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none;
+        }
+
+        /* Kecuali kolom input biar tetap bisa ngetik */
+        input, textarea {
+            -webkit-user-select: text !important;
+            user-select: text !important;
+            -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
+        }
+      `}</style>
+
             overflow-x: hidden; /* Ilangin garis putih kanan */
             -webkit-tap-highlight-color: transparent;
             overscroll-behavior-y: none; /* Ilangin efek tarik mentul (pull-refresh) */
