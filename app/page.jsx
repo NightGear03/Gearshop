@@ -668,7 +668,7 @@ export default function Page() {
             )}
         </div>
         )}
-        /* PART 6 of 7: Store Grid, Calculator Modal & Titipan Market UI */
+        
 
         {/* HERO ITEM (HOT ITEMS) */}
         {heroItems.length > 0 && (
@@ -818,7 +818,7 @@ export default function Page() {
             </div>
           </div>
       )}
-              /* PART 7 of 7: Gold Market Modal, Cart, Confirmations & Toast */
+            
 
       {/* === GOLD MARKET MODAL (NEW FEATURE) === */}
       {isGoldOpen && (
