@@ -566,11 +566,11 @@ export default function Page() {
         paddingBottom: 80 
     }}>
       
-            {/* STYLE GLOBAL GALAK (Inject ke Body & HTML langsung) */}
+                  {/* STYLE GLOBAL GALAK (Inject ke Body & HTML langsung) */}
       <style>{`
         /* --- FIX LEBAR INPUT (PENTING) --- */
         *, *::before, *::after {
-            box-sizing: border-box !important; /* Biar padding ga bikin lebar bablas */
+            box-sizing: border-box !important;
             -webkit-tap-highlight-color: transparent !important;
             -webkit-touch-callout: none !important;
             -webkit-user-select: none !important;
@@ -591,6 +591,7 @@ export default function Page() {
             -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
         }
       `}</style>
+
 
             overflow-x: hidden; /* Ilangin garis putih kanan */
             -webkit-tap-highlight-color: transparent;
