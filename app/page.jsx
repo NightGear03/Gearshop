@@ -589,8 +589,10 @@ export default function Page() {
                     </div>
                 </div>
                 <div style={{textAlign: "right"}}>
-                    <div style={{fontSize: 16, fontWeight: "bold", fontFamily: "monospace", color: "#fff", background:"rgba(0,0,0,0.3)", padding:"4px 8px", borderRadius:6}}>{timeLeft}</div>
-                </div>
+                    <div style={{textAlign: "right"}}>
+    <div style={{fontSize: 16, fontWeight: "bold", color: "#fff", background:"rgba(0,0,0,0.3)", padding:"4px 8px", borderRadius:6}}>{timeLeft}</div>
+</div>
+
             </div>
             
             {isAuctionExpanded && (
