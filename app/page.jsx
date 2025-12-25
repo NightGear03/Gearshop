@@ -551,20 +551,37 @@ export default function Page() {
   // Store Closed View
   if (!loading && !isStoreOpen) { return (<div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20, textAlign: "center" }}><img src="/logo.png" height={60} alt="Logo" style={{marginBottom: 20}} /><h2 style={{color: "#FF4444", fontSize: 28, marginBottom: 10}}>🔴 TOKO TUTUP</h2><p style={{color: theme.subText, maxWidth: 300, marginBottom: 30}}>Maaf ya, admin lagi istirahat. Cek lagi nanti ya!</p><button onClick={contactAdmin} style={{ background: "#25D366", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 50, fontSize: 16, fontWeight: "bold", cursor: "pointer" }}><span>💬 Chat WhatsApp Admin</span></button></div>); }
 
-    return (
-    <div style={{ background: theme.bg, minHeight: "100vh", width: "100%", overflowX: "hidden", color: theme.text, fontFamily: "sans-serif", paddingBottom: 80 }}>
+      return (
+    <div style={{ 
+        background: theme.bg, 
+        minHeight: "100vh", 
+        width: "100%", 
+        // Force Style Native App di Wrapper Utama
+        WebkitTapHighlightColor: "transparent",
+        WebkitUserSelect: "none",
+        userSelect: "none",
+        touchAction: "manipulation",
+        color: theme.text, 
+        fontFamily: "sans-serif", 
+        paddingBottom: 80 
+    }}>
       
-      {/* STYLE ANTI BLOK & HIGHLIGHT (VERSI KUAT) */}
+      {/* STYLE GLOBAL GALAK (Inject ke Body & HTML langsung) */}
       <style>{`
+        html, body {
+            overflow-x: hidden; /* Ilangin garis putih kanan */
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none; /* Ilangin efek tarik mentul (pull-refresh) */
+        }
+        /* Matikan seleksi teks di SEMUA elemen */
         *, *::before, *::after {
             -webkit-tap-highlight-color: transparent !important;
-            -webkit-touch-callout: none !important;
+            -webkit-touch-callout: none !important; /* Ilangin menu copy/share pas ditahan */
             -webkit-user-select: none !important;
-            -moz-user-select: none !important;
-            -ms-user-select: none !important;
             user-select: none !important;
             outline: none !important;
         }
+        /* Kecuali kolom input biar tetap bisa ngetik */
         input, textarea {
             -webkit-user-select: text !important;
             user-select: text !important;
@@ -573,6 +590,7 @@ export default function Page() {
       `}</style>
 
       {/* HEADER UTAMA */}
+
       <header style={styles.header}>
           <div style={{display:"flex", alignItems:"center", gap: 10}}>
               {/* Logo / Nama Toko */}
