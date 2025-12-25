@@ -552,7 +552,7 @@ export default function Page() {
             )}
         </div>
         )}
-          /* PART 6 of 7: Hero Items, Store Grid & Calculator Modal */
+          
 
         {/* HERO ITEM */}
         {heroItems.length > 0 && (
@@ -701,7 +701,7 @@ export default function Page() {
             </div>
         </div>
       )}
-                    /* PART 7 of 7: Market Modal (Fixed), Cart, Confirm & Toast UI */
+                    
 
       {/* === PASAR WARGA MODAL (FIXED: SOLD Overlay & Relative Position) === */}
       {marketOpen && (
