@@ -260,13 +260,24 @@ export default function Page() {
   }, [isGoldOpen]);
 
   /* ===== HELPERS (IP & VALIDASI) ===== */
-  const formatWaNumber = (num) => {
-    if (!num) return null;
-    let clean = num.replace(/\D/g, ''); 
+    const formatWaNumber = (num) => {
+    // 1. Cek kalau kosong
+    if (!num) return ""; 
+    
+    // 2. INI PENYELAMATNYA: Paksa ubah apapun (Angka/Teks) jadi String dulu
+    const strNum = String(num); 
+    
+    // 3. Baru dibersihkan (Sekarang aman karena sudah pasti String)
+    let clean = strNum.replace(/\D/g, ''); 
+    
+    // 4. Logika ubah 08 jadi 62
     if (clean.startsWith('0')) return '62' + clean.slice(1);
     if (clean.startsWith('8')) return '62' + clean;
+    if (clean.startsWith('62')) return clean;
+    
     return clean;
   };
+
 
   const isValidWhatsApp = (phoneNumber) => /^08[0-9]{8,13}$/.test(phoneNumber);
 
