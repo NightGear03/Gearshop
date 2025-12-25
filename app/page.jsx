@@ -278,8 +278,9 @@ export default function Page() {
     } catch (error) { return "UNKNOWN"; }
   }
 
-  /* ===== HANDLERS: GOLD MARKET ===== */
+    /* ===== HANDLERS: GOLD MARKET ===== */
   const handlePostGold = async () => {
+      // Validasi Input
       if (!goldForm.nama || !goldForm.jumlah || !goldForm.harga || !goldForm.payment) {
           showToast("Lengkapi semua data!", "error");
           return;
@@ -300,6 +301,7 @@ export default function Page() {
               ip: ip,
               reqTrusted: goldForm.status === "Trusted"
           };
+
           const res = await fetch(AUCTION_API, {
               method: "POST", body: JSON.stringify(payload)
           });
@@ -310,21 +312,23 @@ export default function Page() {
               setGoldView("list");
               fetchGoldData();
           } 
-                              else if (result.status === "NEED_VERIFICATION") {
-    // Panggil modal modern
-    setTrustedModal(true); 
-}
-
-
-  };
-
-
+          else if (result.status === "NEED_VERIFICATION") {
+              // --- DISINI KODE YANG BENAR UTK MODAL BARU ---
+              setTrustedModal(true); 
+          }
           else {
+              // --- SEBELUMNYA ERROR DISINI KARENA ADA }; NYASAR ---
               showToast(result.message, "error");
           }
-      } catch (e) { showToast("Gagal posting, cek koneksi.", "error"); }
-      finally { setGoldLoading(false); }
+      } catch (e) { 
+          console.error(e);
+          showToast("Gagal posting, cek koneksi.", "error");
+      }
+      finally { 
+          setGoldLoading(false); 
+      }
   };
+
 
   const handleDeleteGold = async () => {
       const token = deleteModal.tokenInput;
