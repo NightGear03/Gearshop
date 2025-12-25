@@ -56,6 +56,9 @@ export default function Page() {
   // === STATE BUAT BIN MODAL ===
   const [isBinModalOpen, setIsBinModalOpen] = useState(false);
   const [binCode, setBinCode] = useState("");
+    // === STATE BARU: KONFIRMASI BID MODERN ===
+  const [bidConfirm, setBidConfirm] = useState(null);
+  
 
   /* ===== STATE DARK MODE & STORE STATUS ===== */
   const [darkMode, setDarkMode] = useState(true);
