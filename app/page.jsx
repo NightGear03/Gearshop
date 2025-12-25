@@ -295,12 +295,13 @@ export default function Page() {
       try {
           const ip = await getMyIP();
           const payload = {
-              action: "post_gold",
-              ...goldForm,
-              wa: waNumber,
-              ip: ip,
-              reqTrusted: goldForm.status === "Trusted"
-          };
+    action: "post_gold",
+    ...goldForm,
+    wa: formatWaNumber(waNumber), // <--- Kita paksa ubah jadi 62 sebelum dikirim ke Server
+    ip: ip,
+    reqTrusted: goldForm.status === "Trusted"
+};
+
 
           const res = await fetch(AUCTION_API, {
               method: "POST", body: JSON.stringify(payload)
