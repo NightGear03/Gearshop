@@ -33,30 +33,28 @@ export default function Page() {
   });
   const [calcResult, setCalcResult] = useState(null);
 
-  /* ===== STATE GOLD MARKET (REMASTERED) ===== */
+  /* ===== STATE GOLD MARKET (FITUR BARU) ===== */
   const [isGoldOpen, setIsGoldOpen] = useState(false);
   const [goldData, setGoldData] = useState([]);
   const [goldView, setGoldView] = useState("list"); // 'list' or 'form'
   const [goldLoading, setGoldLoading] = useState(false);
   
-  // Form State dengan Status Baru
+  // Form State
   const [goldForm, setGoldForm] = useState({
       tipe: "JUAL",
       nama: "",
       jumlah: "",
       harga: "",
       payment: "",
-      status: "Perlu MM", // Default (Kuning)
-      reqTrusted: false   // Logic request trusted badge
+      status: "Perlu MM", 
+      reqTrusted: false
   });
 
-  // State Fitur Baru: MM & Custom Modals
-  const [mmList, setMmList] = useState([]); // Nampung data Admin MM
-  const [isMMListOpen, setIsMMListOpen] = useState(false); // Modal List MM
-  
-  // Custom Modals (Pengganti Alert Browser)
-  const [successModal, setSuccessModal] = useState({ show: false, token: "" }); // Pas sukses post
-  const [deleteModal, setDeleteModal] = useState({ show: false, tokenInput: "" }); // Pas mau hapus
+  // State MM & Modals Gold Market
+  const [mmList, setMmList] = useState([]);
+  const [isMMListOpen, setIsMMListOpen] = useState(false);
+  const [successModal, setSuccessModal] = useState({ show: false, token: "" });
+  const [deleteModal, setDeleteModal] = useState({ show: false, tokenInput: "" });
 
   /* ===== STATE CART & USER ===== */
   const [cart, setCart] = useState([]);
@@ -65,13 +63,14 @@ export default function Page() {
   const [ign, setIgn] = useState("");
   const [waNumber, setWaNumber] = useState("");
 
-  /* ===== STATE AUCTION (LELANG) ===== */
+  /* ===== STATE AUCTION (LELANG - DIPERBAIKI) ===== */
   const [auctionData, setAuctionData] = useState(null);
   const [bidAmount, setBidAmount] = useState("");
   const [bidLoading, setBidLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState("Loading...");
   const [isAuctionExpanded, setIsAuctionExpanded] = useState(false);
   
+  // State Bin & Confirm (Dikembalikan karena hilang di file 14)
   const [isBinModalOpen, setIsBinModalOpen] = useState(false);
   const [binCode, setBinCode] = useState("");
   const [bidConfirm, setBidConfirm] = useState(null);
@@ -81,9 +80,9 @@ export default function Page() {
   const [isStoreOpen, setIsStoreOpen] = useState(true);
   const [isMaintenance, setIsMaintenance] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: "", type: "info" });
-/* PART 2 of 7: Load Data & Parsing Logic */
+    /* PART 2 of 7: Load Data & Parsing Logic */
 
-  /* ===== LOAD ALL DATA (STORE & TITIPAN) ===== */
+  /* ===== LOAD ALL DATA (STORE, TITIPAN & USER) ===== */
   useEffect(() => {
     async function loadData() {
       setLoading(true);
@@ -115,9 +114,7 @@ export default function Page() {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('kunci') === "firman123") {
             localStorage.setItem("gearshop_admin", "true");
-            // Ganti Alert browser jadi Toast nanti (di Part selanjutnya)
-            // Tapi sementara console log dulu biar aman
-            console.log("Mode Admin Aktif!"); 
+            console.log("Mode Admin Aktif!");
         }
 
       } catch (err) {
@@ -155,7 +152,7 @@ export default function Page() {
     const systemRow = parsed.find(item => item.kategori?.toUpperCase() === "#SYSTEM" && item.nama?.toUpperCase() === "STATUS_TOKO");
     const statusToko = systemRow ? systemRow.status?.toUpperCase() : "BUKA";
     const isAdmin = localStorage.getItem("gearshop_admin") === "true";
-    
+
     if (statusToko === "TUTUP") {
         setIsStoreOpen(false); setIsMaintenance(false);
     } else if (statusToko === "MT") {
@@ -174,7 +171,6 @@ export default function Page() {
         const found = realItems.find(item => item.nama.toLowerCase() === h.nama.toLowerCase() && item.kategori.toLowerCase() === h.targetKategori?.toLowerCase());
         if (found) matchedHeroes.push(found);
     });
-    
     setHeroItems(matchedHeroes);
     setItems(realItems);
   };
@@ -198,7 +194,7 @@ export default function Page() {
     });
     setTitipanAccounts(data);
   };
-    /* PART 3 of 7: Auction, Gold Market & MM Logic */
+  /* PART 3 of 7: Auction, Gold Market & MM Logic (MERGED & FIXED) */
 
   /* ===== AUCTION TIMER & FETCH ===== */
   useEffect(() => {
@@ -213,7 +209,9 @@ export default function Page() {
         const end = new Date(auctionData.endTime).getTime();
         const now = new Date().getTime();
         const distance = end - now;
-        if (distance < 0) { setTimeLeft("LELANG DITUTUP"); } else {
+        if (distance < 0) { 
+            setTimeLeft("LELANG DITUTUP"); 
+        } else {
             const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((distance % (1000 * 60)) / 1000);
@@ -231,9 +229,9 @@ export default function Page() {
     } catch (error) { console.error("Err lelang", error); }
   }
 
-  /* ===== GOLD MARKET LOGIC (REMASTERED) ===== */
+  /* ===== GOLD MARKET LOGIC (FITUR BARU) ===== */
   
-  // 1. Fetch Gold Data
+  // 1. Fetch Gold Data & MM
   const fetchGoldData = async () => {
       setGoldLoading(true);
       try {
@@ -244,7 +242,6 @@ export default function Page() {
       finally { setGoldLoading(false); }
   };
 
-  // 2. Fetch MM List (Fitur Baru)
   const fetchMMList = async () => {
       try {
           const res = await fetch(`${AUCTION_API}?type=mm&t=${new Date().getTime()}`);
@@ -257,13 +254,31 @@ export default function Page() {
   useEffect(() => {
       if (isGoldOpen) {
           fetchGoldData();
-          fetchMMList(); // Ambil data MM sekalian
+          fetchMMList();
       }
   }, [isGoldOpen]);
 
-  // 3. Handle Submit Iklan Gold
+  /* ===== HELPERS (IP & VALIDASI) ===== */
+  const formatWaNumber = (num) => {
+    if (!num) return null;
+    let clean = num.replace(/\D/g, ''); 
+    if (clean.startsWith('0')) return '62' + clean.slice(1);
+    if (clean.startsWith('8')) return '62' + clean;
+    return clean;
+  };
+
+  const isValidWhatsApp = (phoneNumber) => /^08[0-9]{8,13}$/.test(phoneNumber);
+
+  async function getMyIP() {
+    try { 
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json(); 
+        return data.ip; 
+    } catch (error) { return "UNKNOWN"; }
+  }
+
+  /* ===== HANDLERS: GOLD MARKET ===== */
   const handlePostGold = async () => {
-      // Validasi Input Dasar
       if (!goldForm.nama || !goldForm.jumlah || !goldForm.harga || !goldForm.payment) {
           showToast("Lengkapi semua data!", "error");
           return;
@@ -282,23 +297,19 @@ export default function Page() {
               ...goldForm,
               wa: waNumber,
               ip: ip,
-              // Kirim flag reqTrusted jika user pilih 'Trusted' (Badge Biru)
               reqTrusted: goldForm.status === "Trusted"
           };
-
           const res = await fetch(AUCTION_API, {
               method: "POST", body: JSON.stringify(payload)
           });
           const result = await res.json();
 
           if (result.status === "SUCCESS") {
-              // Sukses -> Tampilkan Modal Sukses (Bukan Alert Browser)
               setSuccessModal({ show: true, token: result.data.token });
               setGoldView("list");
               fetchGoldData();
           } 
           else if (result.status === "NEED_VERIFICATION") {
-              // Gagal Trusted -> Arahkan ke WA Admin (Pake confirm sementara karena ini edge case)
               if(confirm("GAGAL: Nomor Anda belum terdaftar sebagai Trusted Seller.\n\nKlik OK untuk verifikasi ke Admin via WhatsApp.")) {
                   window.open("https://wa.me/6283101456267?text=Halo%20Admin,%20saya%20mau%20verifikasi%20Trusted%20Seller.", "_blank");
               }
@@ -310,9 +321,7 @@ export default function Page() {
       finally { setGoldLoading(false); }
   };
 
-  // 4. Handle Hapus Iklan Gold
   const handleDeleteGold = async () => {
-      // Ambil token dari state modal (bukan prompt bawaan lagi)
       const token = deleteModal.tokenInput;
       if (!token) return;
 
@@ -324,7 +333,7 @@ export default function Page() {
           const result = await res.json();
           if (result.status === "SUCCESS") {
               showToast("Iklan berhasil dihapus!", "success");
-              setDeleteModal({ show: false, tokenInput: "" }); // Tutup modal
+              setDeleteModal({ show: false, tokenInput: "" });
               fetchGoldData();
           } else {
               showToast(result.message, "error");
@@ -333,21 +342,97 @@ export default function Page() {
       finally { setGoldLoading(false); }
   };
 
-  /* ===== HELPERS ===== */
-  const formatWaNumber = (num) => {
-    if (!num) return null;
-    let clean = num.replace(/\D/g, ''); 
-    if (clean.startsWith('0')) return '62' + clean.slice(1);
-    if (clean.startsWith('8')) return '62' + clean;
-    return clean;
-  };
-  const isValidWhatsApp = (phoneNumber) => /^08[0-9]{8,13}$/.test(phoneNumber);
+  /* ===== HANDLERS: AUCTION (RESTORED FROM BACKUP) ===== */
+  // Ini fungsi yang HILANG di file 14, gw balikin biar tombol BID/BIN jalan.
+  
+  const handleBid = async (action, code = null) => {
+    // 1. Validasi
+    if (localStorage.getItem("gearshop_status") === "BANNED") { 
+        showToast("Akses Anda diblokir.", "error");
+        return; 
+    }
+    if (!ign || !waNumber) { 
+        showToast("Wajib isi IGN dan WA di keranjang!", "error");
+        setCartOpen(true); return; 
+    }
+    if (!isValidWhatsApp(waNumber)) { 
+        showToast("Nomor WA Tidak Valid (08xx only).", "error");
+        setCartOpen(true); return; 
+    }
 
-  async function getMyIP() {
-    try { const response = await fetch('https://api.ipify.org?format=json');
-    const data = await response.json(); return data.ip; } catch (error) { return "UNKNOWN"; }
-            }
-            /* PART 4 of 7: Calculator Logic, UI Helpers & Cart Functions */
+    const amount = action === "BIN" ? auctionData.binPrice : parseInt(bidAmount);
+
+    // 2. Logic BIN: Buka Modal Kode
+    if (action === "BIN" && !code) {
+        if (auctionData.currentBid >= auctionData.binPrice) {
+            showToast("Harga Bid sudah melewati harga BIN.", "error");
+            return;
+        }
+        setIsBinModalOpen(true); return;
+    }
+
+    // 3. Validasi Nominal Bid
+    if (action === "BID") {
+        if (!amount || amount <= auctionData.currentBid) {
+            showToast(`Minimal Bid: ${(auctionData.currentBid + auctionData.increment).toLocaleString('id-ID')}`, "error");
+            return;
+        }
+        if (amount >= auctionData.binPrice) {
+             showToast(`Bid ketinggian! Maksimal bid harus di bawah BIN.`, "error");
+             return;
+        }
+        if ((amount - auctionData.currentBid) % auctionData.increment !== 0) {
+            showToast(`Bid harus kelipatan ${auctionData.increment.toLocaleString('id-ID')}`, "error");
+            return;
+        }
+    }
+    
+    // 4. Buka Modal Konfirmasi Modern
+    setBidConfirm({ action, amount, code });
+  };
+
+  const executeBid = async () => {
+    if (!bidConfirm) return;
+    const { action, amount, code } = bidConfirm;
+    
+    setBidLoading(true);
+    setBidConfirm(null); // Tutup modal
+    
+    showToast("Memproses Bid... Mohon tunggu...", "info");
+    
+    try {
+        const userIP = await getMyIP();
+        const payload = { action, bid: amount, ign, wa: waNumber, ip: userIP };
+        if (action === "BIN" && code) payload.code = code; 
+
+        const response = await fetch(AUCTION_API, {
+            method: "POST", body: JSON.stringify(payload), headers: { "Content-Type": "text/plain" }
+        });
+        const result = await response.json();
+
+        if (result.status === "BLOCKED") {
+            localStorage.setItem("gearshop_status", "BANNED");
+            showToast("ANDA DIBLOKIR!", "error");
+        } else if (result.status === "SUCCESS") {
+             setBidAmount("");
+             setBinCode(""); setIsBinModalOpen(false);
+             setTimeout(fetchAuction, 1500); 
+             showToast(result.message, "success");
+        } else {
+             showToast(result.message, "error");
+        }
+    } catch (error) { 
+        showToast("Koneksi Error", "error");
+    } finally { setBidLoading(false); }
+  };
+                  
+  const requestBinCode = () => {
+      const cleanWA = waNumber.replace(/\D/g, '');
+      const text = `Halo Admin, saya *${ign}* (WA: ${cleanWA}).\nSaya mau *BIN (Buy It Now)* item: *${auctionData.item}*.\n\nMohon kirimkan *Kode Konfirmasi BIN*-nya.\nSaya siap transaksi.`;
+      window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
+  };
+
+  /* PART 4 of 7: Calculator Logic, UI Helpers & Cart Functions */
 
   /* ===== LOGIC CALCULATOR (REALTIME & JUJUR) ===== */
   useEffect(() => {
@@ -405,7 +490,7 @@ export default function Page() {
             target: "❌ Belum Kuat", // Vonis Jujur
             next: "Rat (Lv.1)",
             need: Math.ceil(14 - powerScore) 
-        });
+         });
         return;
     }
 
@@ -445,7 +530,7 @@ export default function Page() {
   };
 
   const formatGold = (val) => <span style={{ fontWeight: "bold", color: "#B8860B" }}>{val ? val.toLocaleString('id-ID') : 0} 🪙</span>;
-  
+
   const statusLabel = s => {
     const v = s?.toLowerCase();
     if (v === "full") return "🟢 Full";
@@ -465,8 +550,8 @@ export default function Page() {
   };
 
   const updateQty = (item, qty) => { if (qty < 1) return;
-    setCart(cart.map(c => c.key === item.key ? { ...c, qty } : c)); };
-  
+  setCart(cart.map(c => c.key === item.key ? { ...c, qty } : c)); };
+
   const removeFromCart = item => setCart(cart.filter(c => c.key !== item.key));
   
   const totalQty = cart.reduce((s, c) => s + c.qty, 0);
@@ -475,7 +560,8 @@ export default function Page() {
   const handleCheckoutClick = () => {
     if (!cart.length) return;
     // Pake Toast bukan Alert
-    if (!ign) { showToast("Mohon isi IGN (Nickname Game) dulu ya!", "error"); return; }
+    if (!ign) { showToast("Mohon isi IGN (Nickname Game) dulu ya!", "error"); return;
+    }
     setCartOpen(false); setConfirmOpen(true);
   };
 
@@ -503,11 +589,11 @@ export default function Page() {
       `Halo min, mau nitip jual item dong.\nNama item :\nHarga item :\nOwner item :\nHarga nego/fix :\nGambar item : (jika ada)` : `Halo min, mau titip jual akun dong.\nNickname :\nLevel :\nMelee :\nDistance :\nMagic :\nDefense :\nSet :\nOwner :\nNego/Fix :\nHarga : (bebas mau rp/gold)\nWajib MM/Tidak :\nGambar akun : (jika ada)`;
       window.open(`https://wa.me/6283101456267?text=${encodeURIComponent(text)}`, "_blank");
   };
-      /* PART 5 of 7: Styles, Main Layout & Auction UI */
+    /* PART 5 of 7: Styles, Main Layout & Auction UI (FIXED FONTS & COLORS) */
 
   const categories = ["All", ...new Set(items.map(i => i.kategori))];
   const filteredItems = items.filter(i => (i.nama.toLowerCase().includes(search.toLowerCase())) && (category === "All" || i.kategori === category)).sort((a, b) => sort === "buy-asc" ? a.buy - b.buy : sort === "buy-desc" ? b.buy - a.buy : 0);
-  
+
   // Theme Configuration (Dark Mode Default)
   const theme = { 
       bg: darkMode ? "#121212" : "#f5f5f5", 
@@ -518,8 +604,8 @@ export default function Page() {
       accent: "#B8860B", 
       inputBg: darkMode ? "#2c2c2c" : "#fff", 
       subText: darkMode ? "#aaa" : "#666",
-      // Gradient Auction Baru
-      auctionBg: darkMode ? "linear-gradient(135deg, #1a0505 0%, #2d0a0a 100%)" : "linear-gradient(135deg, #fff0f0 0%, #ffe0e0 100%)" 
+      // Gradient Auction Baru (Merah Gelap Elegan)
+      auctionBg: darkMode ? "linear-gradient(135deg, #2c0000 0%, #4a0000 100%)" : "linear-gradient(135deg, #fff0f0 0%, #ffe0e0 100%)" 
   };
 
   const styles = {
@@ -546,17 +632,18 @@ export default function Page() {
   };
 
   // Maintenance View
-  if (!loading && isMaintenance) { return (<div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#121212", color: "#ffffff", fontFamily: "sans-serif", textAlign: "center", padding: "20px" }}><h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "10px", letterSpacing: "2px" }}>⚙️GEARSHOP⚙️</h1><h2 style={{ color: "#f1c40f", fontSize: "1.5rem", marginBottom: "20px", border: "2px solid #f1c40f", padding: "10px 20px", borderRadius: "8px", background: "rgba(241, 196, 15, 0.1)" }}>🚧 MAINTENANCE 🚧</h2><p style={{ fontSize: "1.1rem", marginBottom: "5px" }}>Silahkan cek dalam beberapa waktu lagi.</p><p style={{ fontSize: "1.1rem", fontWeight: "bold", marginTop: "20px" }}>Terimakasih 😁</p></div>); }
+  if (!loading && isMaintenance) { return (<div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#121212", color: "#ffffff", fontFamily: "sans-serif", textAlign: "center", padding: "20px" }}><h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "10px", letterSpacing: "2px" }}>⚙️GEARSHOP⚙️</h1><h2 style={{ color: "#f1c40f", fontSize: "1.5rem", marginBottom: "20px", border: "2px solid #f1c40f", padding: "10px 20px", borderRadius: "8px", background: "rgba(241, 196, 15, 0.1)" }}>🚧 MAINTENANCE 🚧</h2><p style={{ fontSize: "1.1rem", marginBottom: "5px" }}>Silahkan cek dalam beberapa waktu lagi.</p><p style={{ fontSize: "1.1rem", fontWeight: "bold", marginTop: "20px" }}>Terimakasih 😁</p></div>);
+  }
   
   // Store Closed View
-  if (!loading && !isStoreOpen) { return (<div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20, textAlign: "center" }}><img src="/logo.png" height={60} alt="Logo" style={{marginBottom: 20}} /><h2 style={{color: "#FF4444", fontSize: 28, marginBottom: 10}}>🔴 TOKO TUTUP</h2><p style={{color: theme.subText, maxWidth: 300, marginBottom: 30}}>Maaf ya, admin lagi istirahat. Cek lagi nanti ya!</p><button onClick={contactAdmin} style={{ background: "#25D366", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 50, fontSize: 16, fontWeight: "bold", cursor: "pointer" }}><span>💬 Chat WhatsApp Admin</span></button></div>); }
+  if (!loading && !isStoreOpen) { return (<div style={{ background: theme.bg, minHeight: "100vh", color: theme.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20, textAlign: "center" }}><img src="/logo.png" height={60} alt="Logo" style={{marginBottom: 20}} /><h2 style={{color: "#FF4444", fontSize: 28, marginBottom: 10}}>🔴 TOKO TUTUP</h2><p style={{color: theme.subText, maxWidth: 300, marginBottom: 30}}>Maaf ya, admin lagi istirahat. Cek lagi nanti ya!</p><button onClick={contactAdmin} style={{ background: "#25D366", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 50, fontSize: 16, fontWeight: "bold", cursor: "pointer" }}><span>💬 Chat WhatsApp Admin</span></button></div>);
+  }
 
-      return (
+  return (
     <div style={{ 
         background: theme.bg, 
         minHeight: "100vh", 
         width: "100%", 
-        // Force Style Native App di Wrapper Utama
         WebkitTapHighlightColor: "transparent",
         WebkitUserSelect: "none",
         userSelect: "none",
@@ -565,10 +652,8 @@ export default function Page() {
         fontFamily: "sans-serif", 
         paddingBottom: 80 
     }}>
-      
-                  {/* STYLE GLOBAL GALAK (Inject ke Body & HTML langsung) */}
+      {/* STYLE GLOBAL CSS FIX */}
       <style>{`
-        /* --- FIX LEBAR INPUT (PENTING) --- */
         *, *::before, *::after {
             box-sizing: border-box !important;
             -webkit-tap-highlight-color: transparent !important;
@@ -577,35 +662,11 @@ export default function Page() {
             user-select: none !important;
             outline: none !important;
         }
-
         html, body {
             overflow-x: hidden;
             -webkit-tap-highlight-color: transparent;
             overscroll-behavior-y: none;
         }
-
-        /* Kecuali kolom input biar tetap bisa ngetik */
-        input, textarea {
-            -webkit-user-select: text !important;
-            user-select: text !important;
-            -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
-        }
-      `}</style>
-
-
-            overflow-x: hidden; /* Ilangin garis putih kanan */
-            -webkit-tap-highlight-color: transparent;
-            overscroll-behavior-y: none; /* Ilangin efek tarik mentul (pull-refresh) */
-        }
-        /* Matikan seleksi teks di SEMUA elemen */
-        *, *::before, *::after {
-            -webkit-tap-highlight-color: transparent !important;
-            -webkit-touch-callout: none !important; /* Ilangin menu copy/share pas ditahan */
-            -webkit-user-select: none !important;
-            user-select: none !important;
-            outline: none !important;
-        }
-        /* Kecuali kolom input biar tetap bisa ngetik */
         input, textarea {
             -webkit-user-select: text !important;
             user-select: text !important;
@@ -614,10 +675,8 @@ export default function Page() {
       `}</style>
 
       {/* HEADER UTAMA */}
-
       <header style={styles.header}>
           <div style={{display:"flex", alignItems:"center", gap: 10}}>
-              {/* Logo / Nama Toko */}
               <div style={{fontWeight:"bold", fontSize: 20, letterSpacing:1}}>GEAR<span style={{color:"#3498db"}}>SHOP</span></div>
           </div>
           <div style={{display:"flex", alignItems:"center", gap: 20}}>
@@ -637,37 +696,36 @@ export default function Page() {
       </header>
 
       <main style={{ padding: 16 }}>
-        {/* === AUCTION CARD MODERN === */}
+        {/* === AUCTION CARD MODERN (FIXED UI) === */}
         {auctionData && auctionData.status !== "empty" && (
-        <div style={{ marginBottom: 24, borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 32px rgba(255, 0, 0, 0.2)", border: "1px solid rgba(255, 68, 68, 0.3)", background: theme.auctionBg, backdropFilter: "blur(10px)" }}>
-            <div onClick={() => setIsAuctionExpanded(!isAuctionExpanded)} style={{ padding: "15px 20px", background: "linear-gradient(90deg, rgba(136,0,0,0.8) 0%, rgba(170,0,0,0.8) 100%)", color: "white", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ marginBottom: 24, borderRadius: 12, overflow: "hidden", boxShadow: "0 4px 20px rgba(255, 68, 68, 0.5)", border: "2px solid #FF4444", background: theme.auctionBg, transition: "all 0.3s ease" }}>
+            <div onClick={() => setIsAuctionExpanded(!isAuctionExpanded)} style={{ padding: "12px 16px", background: "linear-gradient(90deg, #880000 0%, #aa0000 100%)", color: "white", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{display:"flex", alignItems:"center", gap: 12}}>
-                    <div style={{fontSize: 24}}>🔨</div>
+                    <div style={{fontSize: 20}}>🔨</div>
                     <div>
-                        <div style={{fontSize: 10, opacity: 0.9, fontWeight:"bold", textTransform:"uppercase", letterSpacing: 1}}>Live Auction {isAuctionExpanded ? "▼" : "▶"}</div>
-                        {!isAuctionExpanded && <div style={{fontSize: 16, fontWeight: "bold", color: "#FFD700", textShadow: "0 2px 4px rgba(0,0,0,0.5)"}}>{auctionData.item}</div>}
+                        <div style={{fontSize: 11, opacity: 0.8, fontWeight:"bold", textTransform:"uppercase"}}>Live Auction {isAuctionExpanded ? "▼" : "▶"}</div>
+                        {!isAuctionExpanded && <div style={{fontSize: 15, fontWeight: "bold", color: "#FFD700"}}>{auctionData.item}</div>}
                     </div>
                 </div>
                 <div style={{textAlign: "right"}}>
-                    <div style={{textAlign: "right"}}>
-    <div style={{fontSize: 16, fontWeight: "bold", color: "#fff", background:"rgba(0,0,0,0.3)", padding:"4px 8px", borderRadius:6}}>{timeLeft}</div>
-</div>
-
+                     {/* FONT FIX: MONOSPACE AGAR ANGKA TIDAK GOYANG */}
+                     <div style={{fontSize: 14, fontWeight: "bold", fontFamily: "monospace", color: timeLeft === "LELANG DITUTUP" ? "#FF4444" : "#fff"}}>{timeLeft}</div>
+                </div>
             </div>
             
             {isAuctionExpanded && (
-            <div style={{ padding: 20, textAlign:"center" }}>
-                <strong style={{fontSize: 24, display:"block", marginBottom: 5, color: theme.text}}>{auctionData.item}</strong>
-                <div style={{fontSize: 36, fontWeight:"bold", color: "#25D366", textShadow: "0 0 20px rgba(37, 211, 102, 0.3)", margin: "10px 0"}}>{formatGold(auctionData.currentBid)}</div>
+            <div style={{ padding: 16, textAlign:"center" }}>
+                <strong style={{fontSize: 22, display:"block", marginBottom: 5, color: theme.text}}>{auctionData.item}</strong>
+                <div style={{fontSize: 32, fontWeight:"bold", color: "#25D366", textShadow: "0 0 15px rgba(37, 211, 102, 0.4)", margin: "5px 0"}}>{formatGold(auctionData.currentBid)}</div>
                 
-                <div style={{ marginTop: 20, background: "rgba(0,0,0,0.2)", borderRadius: 12, padding: "15px", textAlign: "left", border: "1px solid rgba(255,255,255,0.05)", maxHeight: 220, overflowY: "auto" }}>
-                    <div style={{fontSize:11, color:"#aaa", marginBottom:10, textTransform:"uppercase", letterSpacing:1, borderBottom:"1px solid #444", paddingBottom:5}}>Riwayat Bid Terakhir</div>
+                <div style={{ marginTop: 15, background: "rgba(0,0,0,0.3)", borderRadius: 12, padding: "12px", textAlign: "left", border: "1px solid rgba(255,255,255,0.1)", maxHeight: 200, overflowY: "auto" }}>
+                    <div style={{fontSize:11, color:"#aaa", marginBottom:5, textTransform:"uppercase", letterSpacing:1, borderBottom:"1px solid #555", paddingBottom:4}}>Riwayat Bid Terakhir</div>
                     {auctionData.history && auctionData.history.length > 0 ? (
                         auctionData.history.map((h, i) => (
-                            <div key={i} style={{display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom: "1px dashed rgba(255,255,255,0.1)", fontSize:13}}>
+                            <div key={i} style={{display:"flex", justifyContent:"space-between", padding:"6px 0", borderBottom: "1px dashed rgba(255,255,255,0.1)", fontSize:13}}>
                                 <span style={{color: h.type==="BIN"?"#FFD700":"#fff", fontWeight: h.type==="BIN"?"bold":"normal"}}>{h.name} {h.type==="BIN" && "⚡"}</span>
                                 <div style={{textAlign:"right", display:"flex", gap:10, alignItems:"center"}}>
-                                    <span style={{color:"#25D366", fontWeight:"bold"}}>{formatGold(h.bid)}</span>
+                                    <span style={{color:"#25D366"}}>{formatGold(h.bid)}</span>
                                     <span style={{fontSize:10, color:"#888"}}>{h.time}</span>
                                 </div>
                             </div>
@@ -676,13 +734,14 @@ export default function Page() {
                 </div>
 
                 {!auctionData.isEnded && (
-                <div style={{display:"flex", gap: 10, marginTop: 25}}>
-                    <input type="number" placeholder="Nominal Bid..." value={bidAmount} onChange={e => setBidAmount(e.target.value)} style={{...styles.input, flex: 1, marginBottom: 0, height: 45}} />
-                    <button onClick={() => handleBid("BID")} disabled={bidLoading} style={{background: "#FF4444", color: "white", border: "none", borderRadius: 8, padding: "0 24px", fontWeight:"bold", height: 45, boxShadow: "0 4px 10px rgba(255,68,68,0.3)"}}>BID</button>
+                <div style={{display:"flex", gap: 8, marginTop: 20}}>
+                    {/* INPUT BID DAN TOMBOL BID/BIN YANG SUDAH DIBENERIN */}
+                    <input type="number" placeholder="Nominal Bid..." value={bidAmount} onChange={e => setBidAmount(e.target.value)} style={{...styles.input, flex: 1, marginBottom: 0}} />
+                    <button onClick={() => handleBid("BID")} disabled={bidLoading} style={{background: "#FF4444", color: "white", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold"}}>BID</button>
                     {auctionData.currentBid < auctionData.binPrice ? (
-                        <button onClick={() => handleBid("BIN")} disabled={bidLoading} style={{background: "#FFD700", color: "#000", border: "none", borderRadius: 8, padding: "0 24px", fontWeight:"bold", height: 45, boxShadow: "0 4px 10px rgba(255,215,0,0.3)"}}>BIN</button>
+                        <button onClick={() => handleBid("BIN")} disabled={bidLoading} style={{background: "#FFD700", color: "#000", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold"}}>BIN</button>
                     ) : (
-                        <button disabled style={{background: "#555", color: "#ccc", border: "none", borderRadius: 8, padding: "0 24px", fontWeight:"bold", cursor: "not-allowed", height: 45}}>BIN CLOSED</button>
+                        <button disabled style={{background: "#555", color: "#ccc", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight:"bold", cursor: "not-allowed"}}>BIN CLOSED</button>
                     )}
                 </div>
                 )}
@@ -690,7 +749,8 @@ export default function Page() {
             )}
         </div>
         )}
-                   
+          /* PART 6 of 7: Store Content & Calculator Modal */
+
         {/* HERO ITEM (HOT ITEMS) */}
         {heroItems.length > 0 && (
         <div style={{ marginBottom: 20 }}>
@@ -749,48 +809,99 @@ export default function Page() {
       {/* === CALCULATOR MODAL === */}
       {calcOpen && (
         <div style={styles.modalOverlay}>
-            <div style={{...styles.modalContent, borderTop: "4px solid #FFD700"}}>
+            <div style={{...styles.modalContent, background: "#1a1a1a", borderTop: "2px solid #FFD700"}}>
                 <div style={{display:"flex", justifyContent:"space-between", marginBottom: 20}}>
                     <h2 style={{margin:0, color: "#FFD700", display:"flex", alignItems:"center", gap: 10}}>
-                        🧮 Training Planner
+                        🧮 Training Planner <span style={{fontSize: 10, background: "#333", padding:"2px 6px", borderRadius:4, color:"#fff"}}>v2.1</span>
                     </h2>
                     <button onClick={()=>setCalcOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button>
                 </div>
+
                 <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10}}>
-                    <div><label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Base Level</label><input type="number" placeholder="ex: 300" value={calcInput.lvl} onChange={e => setCalcInput({...calcInput, lvl: e.target.value})} style={styles.input} /></div>
-                    <div><label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Main Stat</label><input type="number" placeholder="ex: 320" value={calcInput.stat} onChange={e => setCalcInput({...calcInput, stat: e.target.value})} style={styles.input} /></div>
-                </div>
-                <div style={{marginBottom: 10}}><label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Extra Stat (Ring/Neck)</label><input type="number" placeholder="ex: 10 (Kosongkan jika 0)" value={calcInput.extra} onChange={e => setCalcInput({...calcInput, extra: e.target.value})} style={styles.input} /></div>
-                <div style={{marginBottom: 15}}><label style={{fontSize: 11, color: "#aaa", marginBottom: 6, display:"block"}}>Weapon Attack</label>
-                    <div style={{display: "flex", gap: 8, overflowX: "auto", paddingBottom: 5}}>
-                        {[4, 5, 7, 9, 11, 15].map(atk => (<button key={atk} onClick={() => setCalcInput({...calcInput, wpn: atk})} style={{flex: 1, minWidth: 40, padding: "8px 0", borderRadius: 6, fontWeight: "bold", background: calcInput.wpn === atk ? "#FFD700" : "#333", color: calcInput.wpn === atk ? "#000" : "#888", border: "none"}}>{atk}</button>))}
+                    <div>
+                        <label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Base Level</label>
+                        <input type="number" placeholder="ex: 300" value={calcInput.lvl} onChange={e => setCalcInput({...calcInput, lvl: e.target.value})} style={styles.input} />
+                    </div>
+                    <div>
+                        <label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Main Stat</label>
+                        <input type="number" placeholder="ex: 320" value={calcInput.stat} onChange={e => setCalcInput({...calcInput, stat: e.target.value})} style={styles.input} />
                     </div>
                 </div>
+
+                <div style={{marginBottom: 10}}>
+                    <label style={{fontSize: 11, color: "#aaa", marginBottom: 4, display:"block"}}>Extra Stat (Ring/Neck)</label>
+                    <input type="number" placeholder="ex: 10 (Kosongkan jika 0)" value={calcInput.extra} onChange={e => setCalcInput({...calcInput, extra: e.target.value})} style={styles.input} />
+                </div>
+
+                <div style={{marginBottom: 15}}>
+                    <label style={{fontSize: 11, color: "#aaa", marginBottom: 6, display:"block"}}>Weapon Attack</label>
+                    <div style={{display: "flex", gap: 8, overflowX: "auto", paddingBottom: 5}}>
+                        {[4, 5, 7, 9, 11, 15].map(atk => (
+                            <button key={atk} onClick={() => setCalcInput({...calcInput, wpn: atk})} 
+                            style={{
+                                flex: 1, minWidth: 40, padding: "8px 0", borderRadius: 6, fontWeight: "bold",
+                                background: calcInput.wpn === atk ? "#FFD700" : "#333",
+                                color: calcInput.wpn === atk ? "#000" : "#888",
+                                border: "none"
+                            }}>
+                                {atk}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
                 <div style={{marginBottom: 20, background: "rgba(255,255,255,0.05)", padding: 10, borderRadius: 8}}>
                     <label style={{fontSize: 11, color: "#aaa", marginBottom: 8, display:"block"}}>Training Mode</label>
                     <div style={{display: "flex", gap: 10, marginBottom: 10}}>
-                         <button onClick={() => setCalcInput({...calcInput, mode: 'afk'})} style={{flex: 1, padding: 8, borderRadius: 6, border: calcInput.mode === 'afk' ? "1px solid #FFD700" : "1px solid #444", background: calcInput.mode === 'afk' ? "rgba(255, 215, 0, 0.1)" : "transparent", color: calcInput.mode === 'afk' ? "#FFD700" : "#888"}}>💤 AFK (x1)</button>
-                         <button onClick={() => setCalcInput({...calcInput, mode: 'ptrain'})} style={{flex: 1, padding: 8, borderRadius: 6, border: calcInput.mode === 'ptrain' ? "1px solid #FF4444" : "1px solid #444", background: calcInput.mode === 'ptrain' ? "rgba(255, 68, 68, 0.1)" : "transparent", color: calcInput.mode === 'ptrain' ? "#FF4444" : "#888"}}>🔥 Ptrain (x4)</button>
+                         <button onClick={() => setCalcInput({...calcInput, mode: 'afk'})} style={{flex: 1, padding: 8, borderRadius: 6, border: calcInput.mode === 'afk' ? "1px solid #FFD700" : "1px solid #444", background: calcInput.mode === 'afk' ? "rgba(255, 215, 0, 0.1)" : "transparent", color: calcInput.mode === 'afk' ? "#FFD700" : "#888"}}>
+                            💤 AFK (x1)
+                         </button>
+                         <button onClick={() => setCalcInput({...calcInput, mode: 'ptrain'})} style={{flex: 1, padding: 8, borderRadius: 6, border: calcInput.mode === 'ptrain' ? "1px solid #FF4444" : "1px solid #444", background: calcInput.mode === 'ptrain' ? "rgba(255, 68, 68, 0.1)" : "transparent", color: calcInput.mode === 'ptrain' ? "#FF4444" : "#888"}}>
+                            🔥 Ptrain (x4)
+                         </button>
                     </div>
-                    {calcInput.mode === 'ptrain' && (<div style={{display:"flex", alignItems:"center", gap: 8, fontSize: 13, color: theme.text}}><input type="checkbox" checked={calcInput.magic} onChange={e => setCalcInput({...calcInput, magic: e.target.checked})} style={{width: 16, height: 16}} /><span>Saya menggunakan Magic (Mage) 🧙‍♂️</span></div>)}
+                    {calcInput.mode === 'ptrain' && (
+                        <div style={{display:"flex", alignItems:"center", gap: 8, fontSize: 13, color: theme.text}}>
+                            <input type="checkbox" checked={calcInput.magic} onChange={e => setCalcInput({...calcInput, magic: e.target.checked})} style={{width: 16, height: 16}} />
+                            <span>Saya menggunakan Magic (Mage) 🧙‍♂️</span>
+                        </div>
+                    )}
                 </div>
+
                 {calcResult && (
                     <div style={{marginTop: 20, padding: 15, borderRadius: 12, background: "linear-gradient(135deg, #222 0%, #111 100%)", border: "1px solid #444", position: "relative", overflow: "hidden"}}>
                          <div style={{position: "absolute", top: -10, right: -10, fontSize: 80, opacity: 0.1}}>🎯</div>
-                         <div style={{textAlign: "center", marginBottom: 15}}><div style={{fontSize: 12, color: "#888"}}>Rekomendasi Monster</div><div style={{fontSize: 28, fontWeight: "900", color: "#FFD700", textShadow: "0 0 10px rgba(255, 215, 0, 0.3)"}}>{calcResult.target.toUpperCase()}</div><div style={{fontSize: 11, color: "#4caf50"}}>Power Score: {calcResult.score}</div></div>
-                         <div style={{display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.05)", padding: 10, borderRadius: 8}}><div style={{fontSize: 24}}>🔜</div><div style={{flex: 1}}><div style={{fontSize: 10, color: "#aaa"}}>Next Target:</div><div style={{fontSize: 14, fontWeight: "bold", color: "#fff"}}>{calcResult.next}</div></div><div style={{textAlign: "right"}}><div style={{fontSize: 10, color: "#aaa"}}>Butuh Stat:</div><div style={{fontSize: 16, fontWeight: "bold", color: "#FF4444"}}>+{calcResult.need}</div></div></div>
+                         <div style={{textAlign: "center", marginBottom: 15}}>
+                            <div style={{fontSize: 12, color: "#888"}}>Rekomendasi Monster</div>
+                            <div style={{fontSize: 28, fontWeight: "900", color: "#FFD700", textShadow: "0 0 10px rgba(255, 215, 0, 0.3)"}}>
+                                {calcResult.target.toUpperCase()}
+                            </div>
+                            <div style={{fontSize: 11, color: "#4caf50"}}>Power Score: {calcResult.score}</div>
+                         </div>
+                         <div style={{display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.05)", padding: 10, borderRadius: 8}}>
+                             <div style={{fontSize: 24}}>🔜</div>
+                             <div style={{flex: 1}}>
+                                 <div style={{fontSize: 10, color: "#aaa"}}>Next Target:</div>
+                                 <div style={{fontSize: 14, fontWeight: "bold", color: "#fff"}}>{calcResult.next}</div>
+                             </div>
+                             <div style={{textAlign: "right"}}>
+                                 <div style={{fontSize: 10, color: "#aaa"}}>Butuh Stat:</div>
+                                 <div style={{fontSize: 16, fontWeight: "bold", color: "#FF4444"}}>+{calcResult.need}</div>
+                             </div>
+                         </div>
                     </div>
                 )}
             </div>
         </div>
       )}
+                    /* PART 7A: Pasar Warga & Gold Market UI */
 
       {/* === PASAR WARGA MODAL (TITIPAN) === */}
       {marketOpen && (
           <div style={styles.modalOverlay}>
             <div style={styles.modalContent}>
                 <div style={{display:"flex", justifyContent:"space-between", marginBottom: 20}}>
-                    <h2 style={{margin:0}}>🏪 Pasar Warga</h2>
+                    <h2 style={{margin:0}}>🏪 Pasar Warga (v2.0)</h2>
                     <button onClick={()=>setMarketOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button>
                 </div>
                 <div style={styles.tabContainer}>
@@ -799,36 +910,63 @@ export default function Page() {
                 </div>
                 
                 <div style={marketTab === 'items' ? styles.grid : {...styles.grid, gridTemplateColumns: "1fr"}}>
-                    {/* ITEMS LIST */}
+                    {/* LIST BARANG TITIPAN */}
                     {marketTab === 'items' && titipanItems.map((item, idx) => (
                         <div key={idx} style={{...styles.card, position: "relative", opacity: item.status?.toLowerCase() === 'sold' ? 0.6 : 1}}>
-                            {item.status?.toLowerCase() === 'sold' && (<div style={{position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", color:"red", fontWeight:"bold", fontSize:20, zIndex:2, borderRadius: 8}}>SOLD</div>)}
+                            {item.status?.toLowerCase() === 'sold' && (
+                                <div style={{position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", color:"red", fontWeight:"bold", fontSize:20, zIndex:2, borderRadius: 8}}>SOLD</div>
+                            )}
                             <div style={{height: 100, background: "#333", borderRadius: 4, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden"}}>
                                 {item.img ? <img src={item.img} alt={item.nama} style={{width:"100%", height:"100%", objectFit:"cover"}} onError={(e)=>{e.target.onerror=null; e.target.src="https://placehold.co/100x100?text=No+Image"}} /> : <span style={{fontSize:40}}>📦</span>}
                             </div>
                             <div style={{fontWeight:"bold", color: "#FFD700", fontSize: 14}}>{item.nama}</div>
                             <div style={{fontSize: 12, color: theme.text}}>By: {item.owner}</div>
-                            <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 4}}><span style={{color: "#4caf50", fontWeight:"bold"}}>{item.harga}</span><span style={{fontSize: 10, padding: "2px 6px", borderRadius: 4, background: item.tipeHarga === 'Nego' ? '#FFA500' : '#2196F3', color:'white'}}>{item.tipeHarga}</span></div>
+                            <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 4}}>
+                                <span style={{color: "#4caf50", fontWeight:"bold"}}>{item.harga}</span>
+                                <span style={{fontSize: 10, padding: "2px 6px", borderRadius: 4, background: item.tipeHarga === 'Nego' ? '#FFA500' : '#2196F3', color:'white'}}>{item.tipeHarga}</span>
+                            </div>
                             <button onClick={()=>contactOwner(item, 'item')} style={{...styles.btn, marginTop:8, fontSize: 12}}>💬 Chat Owner</button>
                         </div>
                     ))}
-                    {/* ACCOUNTS LIST */}
+
+                    {/* LIST AKUN TITIPAN */}
                     {marketTab === 'accounts' && titipanAccounts.map((acc, idx) => (
                         <div key={idx} style={{...styles.card, flexDirection: "row", gap: 12, alignItems: "center", position: "relative", opacity: acc.status?.toLowerCase() === 'sold' ? 0.6 : 1}}>
-                            {acc.status?.toLowerCase() === 'sold' && (<div style={{position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", color:"red", fontWeight:"bold", fontSize:20, zIndex:2, borderRadius: 8}}>SOLD</div>)}
+                            {acc.status?.toLowerCase() === 'sold' && (
+                                <div style={{position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", color:"red", fontWeight:"bold", fontSize:20, zIndex:2, borderRadius: 8}}>SOLD</div>
+                            )}
                             <div style={{width: 80, height: 80, background: "#333", borderRadius: "50%", overflow:"hidden", flexShrink: 0}}>
                                 {acc.img ? <img src={acc.img} alt={acc.nama} style={{width:"100%", height:"100%", objectFit:"cover"}} onError={(e)=>{e.target.onerror=null; e.target.src="https://placehold.co/100x100?text=No+Image"}} /> : <div style={{width:"100%",height:"100%", display:"flex",alignItems:"center",justifyContent:"center", fontSize:30}}>👤</div>}
                             </div>
                             <div style={{flex: 1}}>
-                                <div style={{display:"flex", justifyContent:"space-between"}}><div style={{fontWeight:"bold", fontSize: 16, color: "#FFD700"}}>{acc.nama} <span style={{fontSize:12, color:"#aaa"}}>Lv.{acc.level}</span></div>{acc.wajibMM?.toLowerCase() === 'ya' && <div style={{fontSize: 10, background: "red", color:"white", padding: "2px 6px", borderRadius: 4}}>🛡️ WAJIB MM</div>}</div>
-                                <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap: 4, fontSize: 11, margin: "8px 0", color: "#ccc", background:"rgba(255,255,255,0.05)", padding: 6, borderRadius: 4}}><div>⚔️ {acc.melee} | 🏹 {acc.dist}</div><div>✨ {acc.magic} | 🛡️ {acc.def}</div></div>
+                                <div style={{display:"flex", justifyContent:"space-between"}}>
+                                    <div style={{fontWeight:"bold", fontSize: 16, color: "#FFD700"}}>{acc.nama} <span style={{fontSize:12, color:"#aaa"}}>Lv.{acc.level}</span></div>
+                                    {acc.wajibMM?.toLowerCase() === 'ya' && <div style={{fontSize: 10, background: "red", color:"white", padding: "2px 6px", borderRadius: 4}}>🛡️ WAJIB MM</div>}
+                                </div>
+                                <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap: 4, fontSize: 11, margin: "8px 0", color: "#ccc", background:"rgba(255,255,255,0.05)", padding: 6, borderRadius: 4}}>
+                                    <div>⚔️ {acc.melee} | 🏹 {acc.dist}</div>
+                                    <div>✨ {acc.magic} | 🛡️ {acc.def}</div>
+                                </div>
                                 <div style={{fontSize: 11, marginBottom: 4, color: "#aaa"}}>Set: {acc.setInfo}</div>
-                                <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 4}}><div><div style={{fontSize:10, color:"#aaa"}}>Owner: {acc.owner}</div><div style={{color: "#4caf50", fontWeight:"bold", fontSize: 14}}>{acc.harga}</div></div><button onClick={()=>contactOwner(acc, 'account')} style={{...styles.btn, fontSize: 12, background: "#333", border: "1px solid #555"}}>{acc.tipeHarga?.toLowerCase() === 'fix' ? '💬 Beli (Fix)' : '💬 Nego'}</button></div>
+                                <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 4}}>
+                                    <div>
+                                        <div style={{fontSize:10, color:"#aaa"}}>Owner: {acc.owner}</div>
+                                        <div style={{color: "#4caf50", fontWeight:"bold", fontSize: 14}}>{acc.harga}</div>
+                                    </div>
+                                    <button onClick={()=>contactOwner(acc, 'account')} style={{...styles.btn, fontSize: 12, background: "#333", border: "1px solid #555"}}>{acc.tipeHarga?.toLowerCase() === 'fix' ? '💬 Beli (Fix)' : '💬 Nego'}</button>
+                                </div>
                             </div>
                         </div>
                     ))}
-                    {((marketTab === 'items' && titipanItems.length === 0) || (marketTab === 'accounts' && titipanAccounts.length === 0)) && (<div style={{textAlign: "center", color: theme.subText, marginTop: 40, width: "100%", gridColumn: "1 / -1"}}><div style={{fontSize: 40}}>🕵️</div><p>Belum ada data saat ini.</p></div>)}
+
+                    {((marketTab === 'items' && titipanItems.length === 0) || (marketTab === 'accounts' && titipanAccounts.length === 0)) && (
+                        <div style={{textAlign: "center", color: theme.subText, marginTop: 40, width: "100%", gridColumn: "1 / -1"}}>
+                            <div style={{fontSize: 40}}>🕵️</div>
+                            <p>Belum ada data saat ini.</p>
+                        </div>
+                    )}
                 </div>
+                
                 <div style={styles.fab} onClick={() => setTitipMenuOpen(!titipMenuOpen)}>{titipMenuOpen ? "✕" : "+"}</div>
                 {titipMenuOpen && (
                     <div style={styles.fabMenu}>
@@ -839,7 +977,7 @@ export default function Page() {
             </div>
           </div>
       )}
-                  
+
       {/* === GOLD MARKET MODAL (REMASTERED) === */}
       {isGoldOpen && (
         <div style={styles.modalOverlay}>
@@ -849,12 +987,10 @@ export default function Page() {
                     <button onClick={()=>setIsGoldOpen(false)} style={{background:"transparent", border:"none", color:"#fff", fontSize:24}}>✕</button>
                 </div>
 
-                {/* Banner Disclaimer */}
                 <div style={{background:"rgba(255,0,0,0.1)", border:"1px solid #500", padding:12, borderRadius:10, fontSize:11, color:"#ff8888", marginBottom:20, lineHeight: "1.4"}}>
                     ⚠️ <b>KEAMANAN TRANSAKSI:</b> Gearshop adalah platform iklan. Gunakan <b>MM Resmi</b> untuk keamanan. Transaksi Direct tanpa MM berisiko tinggi.
                 </div>
 
-                {/* VIEW LIST MARKET */}
                 {goldView === 'list' && (
                     <>
                         <div style={{display:"flex", gap:10, marginBottom:20}}>
@@ -862,26 +998,13 @@ export default function Page() {
                            <button onClick={fetchGoldData} style={{padding:"0 15px", background:"#222", color:"#fff", border:"1px solid #444", borderRadius:10}}>🔄</button>
                         </div>
                         
-                        {/* 1. SKELETON LOADING (FIXED HEIGHT) */}
-          {goldLoading ? (
-    <div style={{display:"flex", flexDirection:"column", gap:12}}>
-        {[1,2,3].map(i => (
-            <div key={i} className="shimmer" style={{height: 165, background: "rgba(255,255,255,0.03)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)"}}></div>
-        ))}
-        <style>{`
-            .shimmer {
-                background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
-                background-size: 200% 100%;
-                animation: loading 1.5s infinite linear;
-            }
-            @keyframes loading {
-                0% { background-position: 200% 0; }
-                100% { background-position: -200% 0; }
-            }
-        `}</style>
-    </div>
-) : (
-
+                        {goldLoading ? (
+                            <div style={{display:"flex", flexDirection:"column", gap:12}}>
+                                {[1,2,3].map(i => (
+                                    <div key={i} style={{height: 165, background: "rgba(255,255,255,0.03)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)"}}></div>
+                                ))}
+                            </div>
+                        ) : (
                             <div style={{display:"flex", flexDirection:"column", gap:12}}>
                                 {goldData.map((g, i) => (
                                     <div key={i} style={{
@@ -898,8 +1021,6 @@ export default function Page() {
                                         
                                         <div style={{display:"flex", justifyContent:"space-between", alignItems:"center"}}>
                                             <div style={{fontSize:22, fontWeight:"bold", color:"#FFD700"}}>Rp {parseInt(g.harga).toLocaleString('id-ID')}</div>
-                                            
-                                            {/* BADGE STATUS 3 WARNA */}
                                             {g.is_trusted ? (
                                                 <div style={{background:"#1da1f2", color:"white", padding:"4px 10px", borderRadius:6, fontSize:10, fontWeight:"bold", display:"flex", alignItems:"center", gap:5}}>🛡️ TRUSTED</div>
                                             ) : (
@@ -922,7 +1043,6 @@ export default function Page() {
                                                 window.open(`https://wa.me/${g.wa}?text=${encodeURIComponent(txt)}`, "_blank");
                                             }} style={{flex:2, background:"#25D366", border:"none", borderRadius:8, color:"white", padding:10, fontSize:13, fontWeight:"bold"}}>💬 Chat Seller</button>
                                             
-                                            {/* TOMBOL LIST MM (Hanya muncul jika bukan trusted) */}
                                             {!g.is_trusted && (
                                                 <button onClick={()=>setIsMMListOpen(true)} style={{flex:1, background:"#333", color:"#ffd700", border:"1px solid #ffd700", borderRadius:8, fontSize:12}}>🛡️ List MM</button>
                                             )}
@@ -937,18 +1057,17 @@ export default function Page() {
                     </>
                 )}
 
-                {/* VIEW FORM POSTING */}
                 {goldView === 'form' && (
                     <div style={{display:"flex", flexDirection:"column", gap:15}}>
                         <div style={{display:"flex", gap:10, background: "#1a1a1a", padding: 5, borderRadius: 12}}>
-                            <button onClick={()=>setGoldForm({...goldForm, tipe:"JUAL"})} style={{flex:1, padding:12, background: goldForm.tipe==="JUAL"?"#4caf50":"transparent", color:"white", border:"none", borderRadius:10, fontWeight:"bold"}}>SAYA JUAL</button>
+                             <button onClick={()=>setGoldForm({...goldForm, tipe:"JUAL"})} style={{flex:1, padding:12, background: goldForm.tipe==="JUAL"?"#4caf50":"transparent", color:"white", border:"none", borderRadius:10, fontWeight:"bold"}}>SAYA JUAL</button>
                             <button onClick={()=>setGoldForm({...goldForm, tipe:"BELI"})} style={{flex:1, padding:12, background: goldForm.tipe==="BELI"?"#f44336":"transparent", color:"white", border:"none", borderRadius:10, fontWeight:"bold"}}>SAYA BELI</button>
                         </div>
 
                         <input placeholder="Nama Anda / Nickname" value={goldForm.nama} onChange={e=>setGoldForm({...goldForm, nama:e.target.value})} style={styles.input} />
                         <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:12}}>
                             <input placeholder="Jumlah Gold (cth: 3kk)" value={goldForm.jumlah} onChange={e=>setGoldForm({...goldForm, jumlah:e.target.value})} style={styles.input} />
-                            <input type="number" placeholder="Harga Rp (Angka)" value={goldForm.harga} onChange={e=>setGoldForm({...goldForm, harga:e.target.value})} style={styles.input} />
+                             <input type="number" placeholder="Harga Rp (Angka)" value={goldForm.harga} onChange={e=>setGoldForm({...goldForm, harga:e.target.value})} style={styles.input} />
                         </div>
                         <input placeholder="Metode Pembayaran (Dana, BCA, dll)" value={goldForm.payment} onChange={e=>setGoldForm({...goldForm, payment:e.target.value})} style={styles.input} />
                         
@@ -962,7 +1081,7 @@ export default function Page() {
                         </div>
 
                         <div style={{display:"flex", gap:10, marginTop:10}}>
-                            <button onClick={()=>setGoldView('list')} style={{flex:1, padding:15, background:"transparent", border:"1px solid #444", color:"#888", borderRadius:12}}>Batal</button>
+                             <button onClick={()=>setGoldView('list')} style={{flex:1, padding:15, background:"transparent", border:"1px solid #444", color:"#888", borderRadius:12}}>Batal</button>
                             <button onClick={handlePostGold} disabled={goldLoading} style={{flex:2, padding:15, background:"#FFD700", border:"none", color:"#000", borderRadius:12, fontWeight:"bold"}}>{goldLoading ? "Memproses..." : "SUBMIT IKLAN"}</button>
                         </div>
                     </div>
@@ -970,8 +1089,9 @@ export default function Page() {
             </div>
         </div>
       )}
+        /* PART 7B: All Modals, Toast & Closing */
 
-      {/* === CUSTOM MODAL: LIST MM === */}
+      {/* === CUSTOM MODAL: LIST MM (GOLD MARKET) === */}
       {isMMListOpen && (
         <div style={styles.modalOverlay}>
             <div style={{...styles.modalContent, maxWidth: 350, border: "1px solid #ffd700"}}>
@@ -1034,18 +1154,32 @@ export default function Page() {
         </div>
       )}
 
+      {/* === MODAL VERIFIKASI BIN (AUCTION) === */}
+      {isBinModalOpen && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.9)", zIndex: 500, display: "flex", justifyContent: "center", alignItems: "center", padding: 20 }}>
+            <div style={{ background: theme.cardBg, border: "2px solid #FFD700", borderRadius: 12, padding: 25, maxWidth: 350, width: "100%", textAlign: "center", boxShadow: "0 0 30px rgba(255, 215, 0, 0.3)" }}>
+                <h2 style={{ color: "#FFD700", marginTop: 0 }}>🔐 Verifikasi BIN</h2>
+                <p style={{ color: theme.text, fontSize: 14 }}>Untuk mencegah <i>Hit & Run</i>, silahkan minta <b>Kode Konfirmasi</b> ke Admin via WhatsApp.</p>
+                <div style={{ margin: "20px 0", background: "rgba(255,255,255,0.05)", padding: 10, borderRadius: 8 }}><div style={{fontSize: 12, color: "#aaa"}}>Item yang akan di-BIN:</div><div style={{fontWeight: "bold", fontSize: 16, color: theme.text}}>{auctionData.item}</div><div style={{fontSize: 20, color: "#25D366", fontWeight: "bold", marginTop: 5}}>{formatGold(auctionData.binPrice)}</div></div>
+                <button onClick={requestBinCode} style={{ width: "100%", padding: "12px", background: "#25D366", color: "white", border: "none", borderRadius: 8, fontWeight: "bold", marginBottom: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><span>💬 Minta Kode ke WhatsApp</span></button>
+                <input placeholder="Masukkan Kode dari Admin..." value={binCode} onChange={(e) => setBinCode(e.target.value)} style={{ ...styles.input, textAlign: "center", fontSize: 18, letterSpacing: 2, textTransform: "uppercase" }} />
+                <div style={{ display: "flex", gap: 10 }}><button onClick={() => setIsBinModalOpen(false)} style={{ flex: 1, padding: 12, background: "transparent", border: "1px solid #555", color: theme.text, borderRadius: 8, cursor: "pointer" }}>Batal</button><button onClick={() => handleBid("BIN", binCode)} disabled={bidLoading || !binCode} style={{ flex: 1, padding: 12, background: "#FFD700", border: "none", color: "black", borderRadius: 8, fontWeight: "bold", cursor: (bidLoading || !binCode) ? "not-allowed" : "pointer", opacity: (!binCode) ? 0.5 : 1 }}>{bidLoading ? "Loading..." : "🔒 KONFIRMASI"}</button></div>
+            </div>
+        </div>
+      )}
+
       {/* CART MODAL */}
       {cartOpen && (
         <div onClick={(e) => { if (e.target === e.currentTarget) setCartOpen(false); }} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", zIndex: 300, display: "flex", justifyContent: "end" }}>
            <div style={{ width: "70%", maxWidth: 320, background: theme.modalBg, height: "100%", padding: 20, overflowY: "auto", borderLeft: theme.border, cursor: "default" }}>
-              <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20}}><h2>Keranjang</h2><button onClick={() => setCartOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>🛒</button></div>
+              <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20}}><h2>Keranjang</h2><button onClick={() => setCartOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button></div>
               {cart.map(c => (<div key={c.key} style={{marginBottom: 15, paddingBottom: 15, borderBottom: "1px solid #333"}}><div style={{fontWeight:"bold"}}>{c.nama} ({c.mode})</div><div style={{fontSize:11, color: theme.subText}}>Kategori: {c.kategori}</div><div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 8}}><div>{formatGold(c.mode === 'buy' ? c.buy : c.sell)} x {c.qty}</div><div style={{display:"flex", gap: 10}}><button onClick={() => updateQty(c, c.qty - 1)}>-</button><button onClick={() => updateQty(c, c.qty + 1)}>+</button><button onClick={() => removeFromCart(c)} style={{background:"red", color:"white", border:"none", borderRadius:4}}>Hapus</button></div></div></div>))}
               <div style={{marginTop: 20, paddingTop: 20, borderTop: "2px solid #555"}}><h4 style={{marginBottom: 10}}>Data Pembeli</h4><input placeholder="Nickname In-Game (IGN) *" value={ign} onChange={(e) => {setIgn(e.target.value); localStorage.setItem("gearShopIGN", e.target.value)}} style={styles.input} /><input placeholder="Nomor WhatsApp (Ex: 08123456789)" type="tel" value={waNumber} onChange={(e) => {setWaNumber(e.target.value); localStorage.setItem("gearShopWA", e.target.value)}} style={styles.input} /><div style={{display:"flex", justifyContent:"space-between", fontSize: 18, fontWeight:"bold", marginTop: 10}}><span>Total:</span><span>{formatGold(totalPrice)}</span></div><button onClick={handleCheckoutClick} style={{...styles.btn, width: "100%", background: "#25D366", padding: 15, marginTop: 20, fontSize: 16}}>WhatsApp Checkout 🚀</button></div>
            </div>
         </div>
       )}
       
-     {/* === CONFIRMATION MODAL === */}
+     {/* === CONFIRMATION MODAL (CHECKOUT) === */}
       {confirmOpen && (
           <div onClick={(e) => { if (e.target === e.currentTarget) setConfirmOpen(false); }} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.9)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(5px)" }}>
               <div style={{ background: theme.cardBg, width: "100%", maxWidth: 400, borderRadius: 16, padding: 25, border: "1px solid #444", boxShadow: "0 10px 40px rgba(0,0,0,0.5)" }}>
@@ -1073,24 +1207,51 @@ export default function Page() {
               </div>
           </div>
       )}
-                                                                                                                                                                                                                                                                                                                              
-      
-      {/* === KONTEN LAINNYA (CART, CONFIRM, TOAST) === */}
-      {/* ... [Pake Part 7 dari kode sebelumnya untuk Cart dan Toast] ... */}
-      
+
+      {/* === MODAL KONFIRMASI BID MODERN (FIXED) === */}
+      {bidConfirm && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.9)", zIndex: 600, display: "flex", justifyContent: "center", alignItems: "center", padding: 20 }}>
+            <div style={{ background: theme.cardBg, border: "2px solid #FFD700", borderRadius: 16, padding: 25, maxWidth: 350, width: "100%", textAlign: "center", boxShadow: "0 0 40px rgba(255, 215, 0, 0.2)" }}>
+                <div style={{fontSize: 50, marginBottom: 10}}>🚀</div>
+                <h2 style={{ color: "#FFD700", margin: "0 0 10px 0" }}>Konfirmasi Bid</h2>
+                
+                <div style={{background: "rgba(255,255,255,0.05)", padding: 15, borderRadius: 10, margin: "15px 0"}}>
+                    <div style={{fontSize: 12, color: "#aaa", textTransform: "uppercase"}}>Nominal Bid</div>
+                    <div style={{fontSize: 28, fontWeight: "bold", color: "#fff"}}>{bidConfirm.amount.toLocaleString('id-ID')} 🪙</div>
+                </div>
+
+                <div style={{ fontSize: 13, color: theme.subText, marginBottom: 25, lineHeight: "1.5", background: "rgba(255, 165, 0, 0.1)", padding: 10, borderRadius: 8, border: "1px dashed #FFA500" }}>
+                    ⚠️ <b>Harap Tunggu!</b><br/>
+                    Setelah klik tombol di bawah, data butuh waktu <b>3-5 detik</b> untuk masuk ke Server. Jangan tutup halaman ya.
+                </div>
+
+                <div style={{ display: "flex", gap: 10 }}>
+                    <button onClick={() => setBidConfirm(null)} style={{ flex: 1, padding: "12px", background: "transparent", border: "1px solid #555", color: theme.text, borderRadius: 8, cursor: "pointer", fontWeight: "bold" }}>
+                        Batal
+                    </button>
+                    <button onClick={executeBid} style={{ flex: 1, padding: "12px", background: "linear-gradient(45deg, #FFD700, #FFA500)", border: "none", color: "black", borderRadius: 8, fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 15px rgba(255, 215, 0, 0.3)" }}>
+                        GAS! 🚀
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* === TOAST NOTIFICATION === */}
       {toast.show && (
         <div style={{
             position: "fixed", bottom: 30, left: "50%", transform: "translateX(-50%)",
             background: toast.type === "error" ? "#D32F2F" : "#388E3C",
             color: "#fff", padding: "12px 24px", borderRadius: 50,
-            boxShadow: "0 6px 20px rgba(0,0,0,0.5)", zIndex: 9999, fontWeight: "bold",
-            display: "flex", alignItems: "center", gap: 10, animation: "slideUp 0.3s ease-out"
+            boxShadow: "0 6px 16px rgba(0,0,0,0.4)", zIndex: 9999, fontWeight: "bold",
+            display: "flex", alignItems: "center", gap: 10, minWidth: 200, justifyContent: "center",
+            animation: "fadeIn 0.3s ease-out"
         }}>
-            <style>{`@keyframes slideUp { from { bottom: -50px; opacity: 0; } to { bottom: 30px; opacity: 1; } }`}</style>
-            <span>{toast.type === "error" ? "⚠️" : "✅"}</span> {toast.msg}
+            <span style={{fontSize: 18}}>{toast.type === "error" ? "⚠️" : "✅"}</span> 
+            {toast.msg}
         </div>
       )}
     </div>
   );
-              }
-                                      
+                  }
+                                 
