@@ -971,58 +971,17 @@ export default function Page() {
         </div>
       )}
 
-      {/* === CART MODAL (KERANJANG) === */}
+      {/* CART MODAL */}
       {cartOpen && (
-        <div onClick={(e) => { if (e.target === e.currentTarget) setCartOpen(false); }} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", zIndex: 300, display: "flex", justifyContent: "end", backdropFilter: "blur(2px)" }}>
-           <div style={{ width: "85%", maxWidth: 350, background: theme.modalBg, height: "100%", padding: 20, overflowY: "auto", borderLeft: "1px solid #333", boxShadow: "-5px 0 20px rgba(0,0,0,0.5)", display: "flex", flexDirection: "column" }}>
-              <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20, borderBottom:"1px solid #333", paddingBottom:15}}>
-                  <h2 style={{margin:0, display:"flex", alignItems:"center", gap:10}}>🛒 Keranjang <span style={{fontSize:12, background:theme.accent, padding:"2px 8px", borderRadius:10, color:"#fff"}}>{cart.length}</span></h2>
-                  <button onClick={() => setCartOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>✕</button>
-              </div>
-              
-              <div style={{flex: 1, overflowY: "auto"}}>
-                {cart.length === 0 ? (
-                    <div style={{textAlign:"center", marginTop: 50, color: "#666"}}>
-                        <div style={{fontSize: 40, marginBottom: 10}}>🕸️</div>
-                        Keranjang masih kosong.
-                    </div>
-                ) : (
-                    cart.map(c => (
-                        <div key={c.key} style={{marginBottom: 15, padding: 12, background: "rgba(255,255,255,0.03)", borderRadius: 8, border: "1px solid #333"}}>
-                            <div style={{display:"flex", justifyContent:"space-between"}}>
-                                <div style={{fontWeight:"bold", color: "#FFD700"}}>{c.nama}</div>
-                                <div style={{fontSize: 10, padding: "2px 6px", borderRadius: 4, background: c.mode==='buy'?"#4caf50":"#333", color: "white"}}>{c.mode.toUpperCase()}</div>
-                            </div>
-                            <div style={{fontSize:11, color: theme.subText, margin: "5px 0"}}>Kategori: {c.kategori}</div>
-                            <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 8}}>
-                                <div style={{fontWeight:"bold"}}>{formatGold((c.mode === 'buy' ? c.buy : c.sell) * c.qty)}</div>
-                                <div style={{display:"flex", alignItems:"center", gap: 8, background: "#000", borderRadius: 6, padding: 2}}>
-                                    <button onClick={() => updateQty(c, c.qty - 1)} style={{background:"transparent", color:"#fff", border:"none", width: 24, fontWeight:"bold"}}>-</button>
-                                    <span style={{fontSize: 12}}>{c.qty}</span>
-                                    <button onClick={() => updateQty(c, c.qty + 1)} style={{background:"transparent", color:"#fff", border:"none", width: 24, fontWeight:"bold"}}>+</button>
-                                </div>
-                            </div>
-                            <button onClick={() => removeFromCart(c)} style={{width:"100%", marginTop: 10, background:"rgba(255,0,0,0.1)", color:"#ff4444", border:"1px dashed #ff4444", borderRadius:4, fontSize: 10, padding: 4}}>Hapus Item</button>
-                        </div>
-                    ))
-                )}
-              </div>
-
-              <div style={{marginTop: 20, paddingTop: 20, borderTop: "2px solid #333"}}>
-                  <h4 style={{marginBottom: 10, marginTop:0}}>Data Pembeli</h4>
-                  <input placeholder="Nickname In-Game (IGN) *" value={ign} onChange={(e) => {setIgn(e.target.value); localStorage.setItem("gearShopIGN", e.target.value)}} style={styles.input} />
-                  <input placeholder="WhatsApp (08xx)" type="tel" value={waNumber} onChange={(e) => {setWaNumber(e.target.value); localStorage.setItem("gearShopWA", e.target.value)}} style={styles.input} />
-                  
-                  <div style={{display:"flex", justifyContent:"space-between", fontSize: 16, fontWeight:"bold", margin: "15px 0", background: "#333", padding: 10, borderRadius: 8}}>
-                      <span>Total:</span>
-                      <span>{formatGold(totalPrice)}</span>
-                  </div>
-                  <button onClick={handleCheckoutClick} style={{width: "100%", background: "#25D366", color: "#fff", padding: 14, borderRadius: 8, fontSize: 16, fontWeight: "bold", border: "none", boxShadow: "0 4px 10px rgba(37,211,102,0.3)"}}>Checkout WhatsApp 🚀</button>
-              </div>
+        <div onClick={(e) => { if (e.target === e.currentTarget) setCartOpen(false); }} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", zIndex: 300, display: "flex", justifyContent: "end" }}>
+           <div style={{ width: "70%", maxWidth: 320, background: theme.modalBg, height: "100%", padding: 20, overflowY: "auto", borderLeft: theme.border, cursor: "default" }}>
+              <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20}}><h2>Keranjang</h2><button onClick={() => setCartOpen(false)} style={{background:"transparent", border:"none", color: theme.text, fontSize: 24}}>âœ•</button></div>
+              {cart.map(c => (<div key={c.key} style={{marginBottom: 15, paddingBottom: 15, borderBottom: "1px solid #333"}}><div style={{fontWeight:"bold"}}>{c.nama} ({c.mode})</div><div style={{fontSize:11, color: theme.subText}}>Kategori: {c.kategori}</div><div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginTop: 8}}><div>{formatGold(c.mode === 'buy' ? c.buy : c.sell)} x {c.qty}</div><div style={{display:"flex", gap: 10}}><button onClick={() => updateQty(c, c.qty - 1)}>-</button><button onClick={() => updateQty(c, c.qty + 1)}>+</button><button onClick={() => removeFromCart(c)} style={{background:"red", color:"white", border:"none", borderRadius:4}}>Hapus</button></div></div></div>))}
+              <div style={{marginTop: 20, paddingTop: 20, borderTop: "2px solid #555"}}><h4 style={{marginBottom: 10}}>Data Pembeli</h4><input placeholder="Nickname In-Game (IGN) *" value={ign} onChange={(e) => {setIgn(e.target.value); localStorage.setItem("gearShopIGN", e.target.value)}} style={styles.input} /><input placeholder="Nomor WhatsApp (Ex: 08123456789)" type="tel" value={waNumber} onChange={(e) => {setWaNumber(e.target.value); localStorage.setItem("gearShopWA", e.target.value)}} style={styles.input} /><div style={{display:"flex", justifyContent:"space-between", fontSize: 18, fontWeight:"bold", marginTop: 10}}><span>Total:</span><span>{formatGold(totalPrice)}</span></div><button onClick={handleCheckoutClick} style={{...styles.btn, width: "100%", background: "#25D366", padding: 15, marginTop: 20, fontSize: 16}}>WhatsApp Checkout ðŸš€</button></div>
            </div>
         </div>
       )}
-
+      
      {/* === CONFIRMATION MODAL === */}
       {confirmOpen && (
           <div onClick={(e) => { if (e.target === e.currentTarget) setConfirmOpen(false); }} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.9)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(5px)" }}>
