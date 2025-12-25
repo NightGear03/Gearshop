@@ -1046,9 +1046,12 @@ export default function Page() {
 
                                         <div style={{display:"flex", gap:8, marginTop:10}}>
                                             <button onClick={()=>{
-                                                const txt = `Halo ${g.nama}, saya minat Gold Market: ${g.tipe} ${g.jumlah} (Rp ${g.harga}).`;
-                                                window.open(`https://wa.me/${g.wa}?text=${encodeURIComponent(txt)}`, "_blank");
-                                            }} style={{flex:2, background:"#25D366", border:"none", borderRadius:8, color:"white", padding:10, fontSize:13, fontWeight:"bold"}}>💬 Chat Seller</button>
+    const txt = `Halo ${g.nama}, saya minat Gold Market: ${g.tipe} ${g.jumlah} (Rp ${g.harga}).`;
+    // 0>62
+    const targetWA = formatWaNumber(g.wa); 
+    window.open(`https://wa.me/${targetWA}?text=${encodeURIComponent(txt)}`, "_blank");
+}} style={{flex:2, background:"#25D366", border:"none", borderRadius:8, color:"white", padding:10, fontSize:13, fontWeight:"bold"}}>💬 Chat Seller</button>
+
                                             
                                             {!g.is_trusted && (
                                                 <button onClick={()=>setIsMMListOpen(true)} style={{flex:1, background:"#333", color:"#ffd700", border:"1px solid #ffd700", borderRadius:8, fontSize:12}}>🛡️ List MM</button>
