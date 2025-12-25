@@ -627,8 +627,7 @@ export default function Page() {
             )}
         </div>
         )}
-                   /* PART 6 of 7: Store Grid, Calculator Modal & Titipan Market UI */
-
+                   
         {/* HERO ITEM (HOT ITEMS) */}
         {heroItems.length > 0 && (
         <div style={{ marginBottom: 20 }}>
@@ -777,8 +776,7 @@ export default function Page() {
             </div>
           </div>
       )}
-                  /* PART 7 of 7: Gold Market UI (Skeleton, Modals & MM List) */
-
+                  
       {/* === GOLD MARKET MODAL (REMASTERED) === */}
       {isGoldOpen && (
         <div style={styles.modalOverlay}>
@@ -801,25 +799,26 @@ export default function Page() {
                            <button onClick={fetchGoldData} style={{padding:"0 15px", background:"#222", color:"#fff", border:"1px solid #444", borderRadius:10}}>🔄</button>
                         </div>
                         
-                        {/* 1. SKELETON LOADING (OPSI 1) */}
-                        {goldLoading ? (
-                            <div style={{display:"flex", flexDirection:"column", gap:12}}>
-                                {[1,2,3].map(i => (
-                                    <div key={i} className="shimmer" style={{height: 120, background: "#1a1a1a", borderRadius: 12, border: "1px solid #333"}}></div>
-                                ))}
-                                <style>{`
-                                    .shimmer {
-                                        background: linear-gradient(90deg, #1a1a1a 25%, #222 50%, #1a1a1a 75%);
-                                        background-size: 200% 100%;
-                                        animation: loading 1.5s infinite;
-                                    }
-                                    @keyframes loading {
-                                        0% { background-position: 200% 0; }
-                                        100% { background-position: -200% 0; }
-                                    }
-                                `}</style>
-                            </div>
-                        ) : (
+                        {/* 1. SKELETON LOADING (FIXED HEIGHT) */}
+          {goldLoading ? (
+    <div style={{display:"flex", flexDirection:"column", gap:12}}>
+        {[1,2,3].map(i => (
+            <div key={i} className="shimmer" style={{height: 165, background: "rgba(255,255,255,0.03)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)"}}></div>
+        ))}
+        <style>{`
+            .shimmer {
+                background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+                background-size: 200% 100%;
+                animation: loading 1.5s infinite linear;
+            }
+            @keyframes loading {
+                0% { background-position: 200% 0; }
+                100% { background-position: -200% 0; }
+            }
+        `}</style>
+    </div>
+) : (
+
                             <div style={{display:"flex", flexDirection:"column", gap:12}}>
                                 {goldData.map((g, i) => (
                                     <div key={i} style={{
