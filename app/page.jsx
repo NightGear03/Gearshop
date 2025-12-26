@@ -289,22 +289,21 @@ export default function Page() {
     } catch (error) { return "UNKNOWN"; }
   }
 
-       /* ===== HANDLERS: GOLD MARKET ===== */
+         /* ===== HANDLERS: GOLD MARKET ===== */
   const handlePostGold = async () => {
-      // 1. CEK STATUS BANNED (PINTU DEPAN)
-      // Kalau HP ini sudah ada tanda "BANNED", tolak mentah-mentah.
+      // 1. SATPAM PINTU DEPAN (INI YANG HILANG DI KODEMU)
+      // Cek dulu, kalau HP ini udah ditandai "BANNED", tolak langsung!
       if (localStorage.getItem("gearshop_status") === "BANNED") { 
           showToast("PERINGATAN: Perangkat Anda telah diblokir permanen.", "error");
-          setGoldView("list"); // Tendang balik ke list biar gak bisa liat form
+          setGoldView("list"); // Tendang keluar dari form
           return; 
       }
 
-      // Validasi Input Form
+      // Validasi Input
       if (!goldForm.nama || !goldForm.jumlah || !goldForm.harga || !goldForm.payment) {
           showToast("Lengkapi semua data!", "error");
           return;
       }
-      // Validasi IGN & WA
       if (!ign || !waNumber) {
           showToast("Isi IGN & WA di Keranjang dulu!", "error");
           setCartOpen(true);
@@ -314,12 +313,10 @@ export default function Page() {
       setGoldLoading(true);
       try {
           const ip = await getMyIP();
-          
           const payload = {
               action: "post_gold",
               ...goldForm,
-              // Format WA jadi 62
-              wa: formatWaNumber(waNumber), 
+              wa: formatWaNumber(waNumber), // Format WA jadi 62
               ip: ip,
               reqTrusted: goldForm.status === "Trusted"
           };
@@ -329,32 +326,23 @@ export default function Page() {
           });
           const result = await res.json();
 
-          // 2. CEK RESPONS SERVER (PINTU BELAKANG / RACUN)
+          // 2. RACUN BROWSER (INI JUGA HILANG DI KODEMU)
           if (result.status === "BLOCKED") {
-              // a. Simpan racun di browser
-              localStorage.setItem("gearshop_status", "BANNED"); 
-              
-              // b. Kasih pesan seram
-              showToast("SYSTEM DETECTED: IP Blacklist. Anda DIBLOKIR!", "error");
-              
-              // c. TENDANG KELUAR DARI FORM (Biar gak bisa coba-coba lagi)
-              setGoldView("list");
+              localStorage.setItem("gearshop_status", "BANNED"); // <--- INI RACUNNYA
+              showToast("SYSTEM: Anda TERDETEKSI Blacklist! Auto-Banned.", "error");
+              setGoldView("list"); // Langsung tendang ke list
           } 
-          // Logika Sukses
           else if (result.status === "SUCCESS") {
               setSuccessModal({ show: true, token: result.data.token });
               setGoldView("list");
               fetchGoldData();
           } 
-          // Logika Trusted
           else if (result.status === "NEED_VERIFICATION") {
-              setTrustedModal(true); 
+              setTrustedModal(true);
           }
-          // Error Lainnya
           else {
               showToast(result.message, "error");
           }
-
       } catch (e) { 
           console.error(e);
           showToast("Gagal posting, cek koneksi.", "error");
