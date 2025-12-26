@@ -1047,7 +1047,7 @@ export default function Page() {
                 </div>
 
                 <div style={{background:"rgba(255,0,0,0.1)", border:"1px solid #500", padding:12, borderRadius:10, fontSize:11, color:"#ff8888", marginBottom:20, lineHeight: "1.4"}}>
-                    ⚠️ <b>KEAMANAN TRANSAKSI:</b> Gearshop adalah platform iklan. Gunakan <b>MM Resmi</b> untuk keamanan. Transaksi Direct tanpa MM berisiko tinggi.
+                    ⚠️ <b>KEAMANAN TRANSAKSI:</b> Gearshop adalah platform iklan. Gunakan <b>MM Resmi</b> untuk keamanan. Transaksi Direct tanpa MM berisiko tinggi, Gearshop tak bertanggung jawab atas terjadinya penipuan.
                 </div>
 
                 {goldView === 'list' && (
