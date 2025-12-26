@@ -289,12 +289,13 @@ export default function Page() {
     } catch (error) { return "UNKNOWN"; }
   }
 
-     /* ===== HANDLERS: GOLD MARKET ===== */
+       /* ===== HANDLERS: GOLD MARKET ===== */
   const handlePostGold = async () => {
       // 1. CEK STATUS BANNED (PINTU DEPAN)
-      // Kalau di HP user sudah ada cap "BANNED", dia gak bisa posting sama sekali.
+      // Kalau HP ini sudah ada tanda "BANNED", tolak mentah-mentah.
       if (localStorage.getItem("gearshop_status") === "BANNED") { 
-          showToast("Akses Anda diblokir.", "error");
+          showToast("PERINGATAN: Perangkat Anda telah diblokir permanen.", "error");
+          setGoldView("list"); // Tendang balik ke list biar gak bisa liat form
           return; 
       }
 
@@ -303,7 +304,7 @@ export default function Page() {
           showToast("Lengkapi semua data!", "error");
           return;
       }
-      // Validasi Data Diri (IGN & WA)
+      // Validasi IGN & WA
       if (!ign || !waNumber) {
           showToast("Isi IGN & WA di Keranjang dulu!", "error");
           setCartOpen(true);
@@ -317,7 +318,7 @@ export default function Page() {
           const payload = {
               action: "post_gold",
               ...goldForm,
-              // Pastikan WA diformat jadi 62 biar aman
+              // Format WA jadi 62
               wa: formatWaNumber(waNumber), 
               ip: ip,
               reqTrusted: goldForm.status === "Trusted"
@@ -328,11 +329,16 @@ export default function Page() {
           });
           const result = await res.json();
 
-          // 2. CEK RESPONS BLOKIR (PINTU BELAKANG / RACUN)
-          // Kalau Server bilang "BLOCKED", HP ini langsung di-Banned permanen.
+          // 2. CEK RESPONS SERVER (PINTU BELAKANG / RACUN)
           if (result.status === "BLOCKED") {
+              // a. Simpan racun di browser
               localStorage.setItem("gearshop_status", "BANNED"); 
-              showToast("ANDA DIBLOKIR! IP Anda terdeteksi Blacklist.", "error");
+              
+              // b. Kasih pesan seram
+              showToast("SYSTEM DETECTED: IP Blacklist. Anda DIBLOKIR!", "error");
+              
+              // c. TENDANG KELUAR DARI FORM (Biar gak bisa coba-coba lagi)
+              setGoldView("list");
           } 
           // Logika Sukses
           else if (result.status === "SUCCESS") {
@@ -340,7 +346,7 @@ export default function Page() {
               setGoldView("list");
               fetchGoldData();
           } 
-          // Logika Trusted (Panggil Modal Baru)
+          // Logika Trusted
           else if (result.status === "NEED_VERIFICATION") {
               setTrustedModal(true); 
           }
