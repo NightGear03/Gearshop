@@ -289,21 +289,21 @@ export default function Page() {
     } catch (error) { return "UNKNOWN"; }
   }
 
-         /* ===== HANDLERS: GOLD MARKET ===== */
+           /* ===== HANDLERS: GOLD MARKET ===== */
   const handlePostGold = async () => {
-      // 1. SATPAM PINTU DEPAN (INI YANG HILANG DI KODEMU)
-      // Cek dulu, kalau HP ini udah ditandai "BANNED", tolak langsung!
+      // 1. SATPAM PINTU DEPAN (Supaya yang udah kena banned gak bisa klik)
       if (localStorage.getItem("gearshop_status") === "BANNED") { 
           showToast("PERINGATAN: Perangkat Anda telah diblokir permanen.", "error");
-          setGoldView("list"); // Tendang keluar dari form
-          return; 
+          setGoldView("list"); 
+          return;
       }
 
-      // Validasi Input
+      // Validasi Input Form
       if (!goldForm.nama || !goldForm.jumlah || !goldForm.harga || !goldForm.payment) {
           showToast("Lengkapi semua data!", "error");
           return;
       }
+      // Validasi Keranjang
       if (!ign || !waNumber) {
           showToast("Isi IGN & WA di Keranjang dulu!", "error");
           setCartOpen(true);
@@ -326,11 +326,11 @@ export default function Page() {
           });
           const result = await res.json();
 
-          // 2. RACUN BROWSER (INI JUGA HILANG DI KODEMU)
+          // 2. RACUN BROWSER (Kalau server bilang BLOCKED, auto-banned browsernya)
           if (result.status === "BLOCKED") {
-              localStorage.setItem("gearshop_status", "BANNED"); // <--- INI RACUNNYA
+              localStorage.setItem("gearshop_status", "BANNED"); 
               showToast("SYSTEM: Anda TERDETEKSI Blacklist! Auto-Banned.", "error");
-              setGoldView("list"); // Langsung tendang ke list
+              setGoldView("list"); 
           } 
           else if (result.status === "SUCCESS") {
               setSuccessModal({ show: true, token: result.data.token });
@@ -348,36 +348,7 @@ export default function Page() {
           showToast("Gagal posting, cek koneksi.", "error");
       }
       finally { 
-          setGoldLoading(false); 
-      }
-  };
-
-
-
-          const res = await fetch(AUCTION_API, {
-              method: "POST", body: JSON.stringify(payload)
-          });
-          const result = await res.json();
-
-          if (result.status === "SUCCESS") {
-              setSuccessModal({ show: true, token: result.data.token });
-              setGoldView("list");
-              fetchGoldData();
-          } 
-          else if (result.status === "NEED_VERIFICATION") {
-              // --- DISINI KODE YANG BENAR UTK MODAL BARU ---
-              setTrustedModal(true); 
-          }
-          else {
-              // --- SEBELUMNYA ERROR DISINI KARENA ADA }; NYASAR ---
-              showToast(result.message, "error");
-          }
-      } catch (e) { 
-          console.error(e);
-          showToast("Gagal posting, cek koneksi.", "error");
-      }
-      finally { 
-          setGoldLoading(false); 
+          setGoldLoading(false);
       }
   };
 
