@@ -289,13 +289,21 @@ export default function Page() {
     } catch (error) { return "UNKNOWN"; }
   }
 
-    /* ===== HANDLERS: GOLD MARKET ===== */
+     /* ===== HANDLERS: GOLD MARKET ===== */
   const handlePostGold = async () => {
-      // Validasi Input
+      // 1. CEK STATUS BANNED (PINTU DEPAN)
+      // Kalau di HP user sudah ada cap "BANNED", dia gak bisa posting sama sekali.
+      if (localStorage.getItem("gearshop_status") === "BANNED") { 
+          showToast("Akses Anda diblokir.", "error");
+          return; 
+      }
+
+      // Validasi Input Form
       if (!goldForm.nama || !goldForm.jumlah || !goldForm.harga || !goldForm.payment) {
           showToast("Lengkapi semua data!", "error");
           return;
       }
+      // Validasi Data Diri (IGN & WA)
       if (!ign || !waNumber) {
           showToast("Isi IGN & WA di Keranjang dulu!", "error");
           setCartOpen(true);
@@ -305,13 +313,51 @@ export default function Page() {
       setGoldLoading(true);
       try {
           const ip = await getMyIP();
+          
           const payload = {
-    action: "post_gold",
-    ...goldForm,
-    wa: formatWaNumber(waNumber), // <--- Kita paksa ubah jadi 62 sebelum dikirim ke Server
-    ip: ip,
-    reqTrusted: goldForm.status === "Trusted"
-};
+              action: "post_gold",
+              ...goldForm,
+              // Pastikan WA diformat jadi 62 biar aman
+              wa: formatWaNumber(waNumber), 
+              ip: ip,
+              reqTrusted: goldForm.status === "Trusted"
+          };
+
+          const res = await fetch(AUCTION_API, {
+              method: "POST", body: JSON.stringify(payload)
+          });
+          const result = await res.json();
+
+          // 2. CEK RESPONS BLOKIR (PINTU BELAKANG / RACUN)
+          // Kalau Server bilang "BLOCKED", HP ini langsung di-Banned permanen.
+          if (result.status === "BLOCKED") {
+              localStorage.setItem("gearshop_status", "BANNED"); 
+              showToast("ANDA DIBLOKIR! IP Anda terdeteksi Blacklist.", "error");
+          } 
+          // Logika Sukses
+          else if (result.status === "SUCCESS") {
+              setSuccessModal({ show: true, token: result.data.token });
+              setGoldView("list");
+              fetchGoldData();
+          } 
+          // Logika Trusted (Panggil Modal Baru)
+          else if (result.status === "NEED_VERIFICATION") {
+              setTrustedModal(true); 
+          }
+          // Error Lainnya
+          else {
+              showToast(result.message, "error");
+          }
+
+      } catch (e) { 
+          console.error(e);
+          showToast("Gagal posting, cek koneksi.", "error");
+      }
+      finally { 
+          setGoldLoading(false); 
+      }
+  };
+
 
 
           const res = await fetch(AUCTION_API, {
